@@ -28,6 +28,8 @@
 
 ## 3. Strategic Objectives & Key Results (12-month Horizon)
 
+KR1: A fully autonomous agent converts a failing test to green **in safe_inmemory mode** with zero human edits.
+
 | Objective                           | Key Results                                                                                                                           |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | **O1: Launch Robust MVP**           | KR1: Complete one non-trivial end-to-end project delivery (e.g., REIT modeling) with full auditability and agent-human collaboration. |
@@ -103,6 +105,8 @@ Dashboards include proactive alerts for outliers or policy breaches.
 ---
 
 ## 9. Strategic Roadmap (12-Month)
+
+• **Autonomy Proof (0–1 week)** – mvp_loop.py green run; all subsequent roadmap phases are blocked until this proof succeeds.
 
 | Phase                       | Duration  | Milestones                                   |
 | --------------------------- | --------- | -------------------------------------------- |

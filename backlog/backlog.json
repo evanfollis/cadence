@@ -1,0 +1,138 @@
+{
+  "MVP_CRITICAL": {
+    "EPICS": [
+      {
+        "id": "E-MVP-1",
+        "title": "Agentic Core Loop Proof",
+        "why": "Demonstrate an LLM-driven red→green patch cycle with zero human steps.",
+        "stories": ["S-MVP-1.1", "S-MVP-1.2", "S-MVP-1.3", "S-MVP-1.4"]
+      },
+      {
+        "id": "E-MVP-2",
+        "title": "Risk Boundary & Circuit Breaker",
+        "why": "Guarantee safety while agents learn (no shell, no disk writes).",
+        "stories": ["S-MVP-2.1"]
+      }
+    ],
+
+    "STORIES": [
+      {
+        "id": "S-MVP-1.1",
+        "epic": "E-MVP-1",
+        "title": "Seed Toy Defect & Failing Test",
+        "owner": "HYBRID",
+        "tasks": ["T-MVP-1.1.1", "T-MVP-1.1.2"]
+      },
+      {
+        "id": "S-MVP-1.2",
+        "epic": "E-MVP-1",
+        "title": "In-Process Orchestrator Skeleton",
+        "owner": "HYBRID",
+        "tasks": ["T-MVP-1.2.1", "T-MVP-1.2.2"]
+      },
+      {
+        "id": "S-MVP-1.3",
+        "epic": "E-MVP-1",
+        "title": "LLM Patch Generator v0",
+        "owner": "AGENT",
+        "tasks": ["T-MVP-1.3.1"]
+      },
+      {
+        "id": "S-MVP-1.4",
+        "epic": "E-MVP-1",
+        "title": "Autonomous Retry Loop & Success Detect",
+        "owner": "AGENT",
+        "tasks": ["T-MVP-1.4.1", "T-MVP-1.4.2"]
+      },
+      {
+        "id": "S-MVP-2.1",
+        "epic": "E-MVP-2",
+        "title": "Circuit Breaker & Rollback Policy",
+        "owner": "HYBRID",
+        "tasks": ["T-MVP-2.1.1", "T-MVP-2.1.2"]
+      }
+    ],
+
+    "TASKS": [
+      {
+        "id": "T-MVP-1.1.1",
+        "story": "S-MVP-1.1",
+        "desc": "Create utils/add.py that incorrectly returns (x - 1 + y).",
+        "autonomous": false,
+        "deps": []
+      },
+      {
+        "id": "T-MVP-1.1.2",
+        "story": "S-MVP-1.1",
+        "desc": "Add tests/test_add.py expecting add(2,3)==5 (should FAIL).",
+        "autonomous": false,
+        "deps": ["T-MVP-1.1.1"]
+      },
+
+      {
+        "id": "T-MVP-1.2.1",
+        "story": "S-MVP-1.2",
+        "desc": "Build mvp_loop.py that: (a) runs pytest programmatically, (b) if red, calls TaskAgent for a diff, (c) applies diff in-memory using cadence.dev.executor.TaskExecutor.",
+        "autonomous": true,
+        "deps": []
+      },
+      {
+        "id": "T-MVP-1.2.2",
+        "story": "S-MVP-1.2",
+        "desc": "Ensure mvp_loop writes *no* files and spawns *no* subprocesses; prints JSON {attempt, pass, diff_summary}.",
+        "autonomous": true,
+        "deps": ["T-MVP-1.2.1"]
+      },
+
+      {
+        "id": "T-MVP-1.3.1",
+        "story": "S-MVP-1.3",
+        "desc": "Implement TaskAgent.prompt() few-shot for single-file patch; reuse cadence/dev/executor.TaskExecutor.build_patch to format unified diff.",
+        "autonomous": true,
+        "deps": ["T-MVP-1.2.2"]
+      },
+
+      {
+        "id": "T-MVP-1.4.1",
+        "story": "S-MVP-1.4",
+        "desc": "Inside mvp_loop, retry up to 3 times; on each fail send previous diff & error back to TaskAgent.",
+        "autonomous": true,
+        "deps": ["T-MVP-1.3.1"]
+      },
+      {
+        "id": "T-MVP-1.4.2",
+        "story": "S-MVP-1.4",
+        "desc": "On first green test run print SUCCESS banner and exit(0); else exit(1) after third failure.",
+        "autonomous": true,
+        "deps": ["T-MVP-1.4.1"]
+      },
+
+      {
+        "id": "T-MVP-2.1.1",
+        "story": "S-MVP-2.1",
+        "desc": "Wrap pytest invocation in try/except; capture exceptions, revert in-memory patch, continue loop.",
+        "autonomous": true,
+        "deps": ["T-MVP-1.2.2"]
+      },
+      {
+        "id": "T-MVP-2.1.2",
+        "story": "S-MVP-2.1",
+        "desc": "Abort loop and require HUMAN attention after 3 consecutive failed attempts.",
+        "autonomous": true,
+        "deps": ["T-MVP-2.1.1"]
+      }
+    ]
+  },
+
+  "POST_MVP": {
+    "blocked_until": "E-MVP-1:DONE",
+    "epics_placeholder": [
+      "E-SCALE-1  Strict Typing & CI",
+      "E-SCALE-2  Immutable Logging",
+      "E-SCALE-3  ShellRunner Hardening",
+      "E-SCALE-4  Observability & Metrics",
+      "E-SCALE-5  Multi-file Diffs",
+      "E-SCALE-6  Secrets & Security"
+    ]
+  }
+}

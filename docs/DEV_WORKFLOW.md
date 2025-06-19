@@ -16,6 +16,7 @@ alias kprompt='python tools/gen_prompt.py --code-root cadence --docs-dir docs'
 
 | Phase    | Module/Class    | Responsibility                  | Error/Fault Handling                    |
 |----------|----------------|----------------------------------|-----------------------------------------|
+| **MVP-Safe** | `mvp_loop.py` | *Single script* collapses Generate→Test loop using in-memory patching only | Auto-rollback on failure, 3-try circuit |
 | Backlog  | BacklogManager | Presents task list/selection     | Empty: process halts; log required      |
 | Generate | TaskGenerator  | Produces new tasks (LLM/options) | Failed output: abort                    |
 | Diff     | TaskExecutor   | Produces/appplies patch          | Invalid/unapplicable: reject/abort      |

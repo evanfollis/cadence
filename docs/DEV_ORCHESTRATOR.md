@@ -19,6 +19,15 @@
 
 ---
 
+## Modes
+
+### Execution Modes
+| Mode            | Command                            | Risk Surface |
+|-----------------|------------------------------------|--------------|
+| safe_inmemory   | `python mvp_loop.py`               | ZERO (no shell, no disk) |
+| full_shell      | `python -m cadence.dev.orchestrator start` | MEDIUM (git, shell, pytest) |
+
+---
 
 ## Notebook Flow
 ```python

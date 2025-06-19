@@ -28,6 +28,16 @@ This process is summarized in the following policy, guard rails, and fail criter
 
 ### **A. Developer Workflow Loop**
 
+**MVP In-Memory Mode (no shell, no git)**  
+`mvp_loop.py` orchestrates steps ❶→❹ atomically in-process:
+
+1. Run pytest; capture failure.
+2. Call `TaskAgent` → unified diff.
+3. Apply diff via `TaskExecutor` (in-memory).
+4. Re-run pytest.
+
+If tests green → **SUCCESS**, else retry (≤3) then human escalates.
+
 | Phase            | Responsibility (role)         | Fail Criteria                      |
 |------------------|------------------------------|------------------------------------|
 | **Backlog**      | Select task from `BacklogManager` | If no items: Workflow blocks      |
