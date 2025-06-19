@@ -42,18 +42,23 @@ class TaskExecutor:
                 raise PatchBuildError("Diff dict must have 'file', 'before', and 'after' (as strings).")
 
             file_abs = os.path.join(self.src_root, file_rel)
-            # Optionally validate file paths
+            # Ensure trailing newline for correct diff context
+            if not before.endswith("\n"):
+                before += "\n"
+            if not after.endswith("\n"):
+                after += "\n"
+
             before_lines = before.splitlines(keepends=True)
-            after_lines = after.splitlines(keepends=True)
+            after_lines  = after.splitlines(keepends=True)
 
             diff_lines = list(difflib.unified_diff(
                 before_lines,
                 after_lines,
-                fromfile=file_rel,
-                tofile=file_rel,
-                lineterm=''
+                fromfile=f"a/{file_rel}",
+                tofile=f"b/{file_rel}",
+                # use default lineterm='\n' for consistent newlines
             ))
-            patch = "".join(line + '\n' for line in diff_lines)
+            patch = "".join(diff_lines)
             if not patch.strip():
                 raise PatchBuildError("Generated patch is empty.")
 
