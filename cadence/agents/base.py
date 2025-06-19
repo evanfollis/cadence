@@ -1,42 +1,59 @@
-# cadence/agents/base.py
-from typing import List, Dict, Any
-from cadence.llm.client import _CLIENT as default_llm_client
-from cadence.llm.client import _MODEL as default_model
+from typing import List, Dict, Any, Optional
+from cadence.llm.client import LLMClient, get_default_client
 
-class Agent:
-    def __init__(self, llm_client: Any = default_llm_client, model: str = default_model):
-        self.llm_client = llm_client
+class BaseAgent:
+    """Abstract LLM-backed agent: stateful message stack, universal interface."""
+
+    def __init__(
+        self,
+        llm_client: Optional[LLMClient] = None,
+        model: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+        **kwargs
+    ):
+        self.llm_client = llm_client or get_default_client()
         self.model = model
+        self.system_prompt = system_prompt
         self.messages: List[Dict[str, Any]] = []
 
-    def reset_context(self, *args, **kwargs):
-        """Reset the agent's conversational context (override in subclass)."""
+    def reset_context(self, system_prompt: Optional[str] = None):
+        """Clear history, optionally (re)set system prompt."""
         self.messages = []
+        sys_prompt = system_prompt or self.system_prompt
+        if sys_prompt:
+            self.append_message("system", sys_prompt)
 
     def append_message(self, role: str, content: str):
         self.messages.append({"role": role, "content": content})
 
     def run_interaction(self, user_input: str, **llm_kwargs) -> str:
-        """
-        Add user_input, run the LLM, append the response, and return it.
-        Assumes self.llm_client follows OpenAI client conventions.
-        """
         self.append_message("user", user_input)
-        response = self.llm_client.chat.completions.create(
+        response = self.llm_client.call(
+            self.messages,
             model=self.model,
-            messages=self.messages,
+            system_prompt=self.system_prompt,
             **llm_kwargs
         )
-        assistant_msg = response.choices[0].message.content.strip()
-        self.append_message("assistant", assistant_msg)
-        return assistant_msg
+        self.append_message("assistant", response)
+        return response
 
-    def save_history(self, path):
+    async def async_run_interaction(self, user_input: str, **llm_kwargs) -> str:
+        self.append_message("user", user_input)
+        response = await self.llm_client.acall(
+            self.messages,
+            model=self.model,
+            system_prompt=self.system_prompt,
+            **llm_kwargs
+        )
+        self.append_message("assistant", response)
+        return response
+
+    def save_history(self, path: str):
         import json
         with open(path, "w", encoding="utf-8") as f:
             json.dump(self.messages, f, indent=2, ensure_ascii=False)
 
-    def load_history(self, path):
+    def load_history(self, path: str):
         import json
         with open(path, "r", encoding="utf-8") as f:
             self.messages = json.load(f)
