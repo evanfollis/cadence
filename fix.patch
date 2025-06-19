@@ -1,7 +1,0 @@
---- a/utils/add.py
-+++ b/utils/add.py
-@@ -1,2 +1,2 @@
--def add(x, y):
--    return x - 1 + y  # INTENTIONALLY BROKEN
-+def add(x, y):
-+    return x + y

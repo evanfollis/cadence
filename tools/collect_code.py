@@ -26,6 +26,7 @@ DEFAULT_EXT = (".py", ".md", ".cfg", ".toml", ".ini")
 
 def collect(
     roots: list[Path],
+    files: list[Path] = [],
     *,
     extensions: tuple[str, ...] = DEFAULT_EXT,
     max_bytes: int | None = None,
@@ -50,6 +51,19 @@ def collect(
                 except UnicodeDecodeError:
                     text = path.read_text(encoding="utf-8", errors="replace")
                 out[str(path.relative_to(Path.cwd()))] = text
+    for file in files:
+        if (
+            file.is_file()
+            and file.suffix in extensions
+            and file.stat().st_size <= (max_bytes or float("inf"))
+        ):
+            rel = str(file.relative_to(Path.cwd()))
+            if rel not in out:
+                try:
+                    text = file.read_text(encoding="utf-8")
+                except UnicodeDecodeError:
+                    text = file.read_text(encoding="utf-8", errors="replace")
+                out[rel] = text
     return out
 
 
@@ -79,6 +93,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="-",
         help="Output JSON file path or '-' for stdout.",
     )
+    p.add_argument(
+        "--file",
+        nargs="+",
+        default=[],
+        help="Individual files to include (repeatable).",
+    )
     return p.parse_args(argv)
 
 
@@ -86,6 +106,7 @@ def main(argv: list[str] | None = None) -> None:  # pragma: no cover
     args = parse_args(argv)
     payload = collect(
         [Path(r).resolve() for r in args.root],
+        files=[Path(f).resolve() for f in args.file],
         extensions=tuple(args.ext),
         max_bytes=args.max_bytes,
     )
