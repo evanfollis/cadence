@@ -1,3 +1,24 @@
+"""# MODULE CONTEXT SUMMARY
+filepath: cadence/agents/base.py
+purpose: ""
+public_api: [
+    'cadence.agents.base.BaseAgent',
+]
+depends_on: [
+    'cadence.llm.client',
+]
+used_by: []
+direct_imports: [
+    'cadence',
+    'json',
+    'typing',
+]
+related_schemas: []
+context_window_expected: ""
+escalation_review: ""
+# END MODULE CONTEXT SUMMARY"""
+
+
 from typing import List, Dict, Any, Optional
 from cadence.llm.client import LLMClient, get_default_client
 

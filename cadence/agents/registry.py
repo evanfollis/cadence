@@ -1,3 +1,22 @@
+"""# MODULE CONTEXT SUMMARY
+filepath: cadence/agents/registry.py
+purpose: ""
+public_api: [
+    'cadence.agents.registry.get_agent',
+]
+depends_on: []
+used_by: []
+direct_imports: [
+    'efficiency',
+    'execution',
+    'reasoning',
+]
+related_schemas: []
+context_window_expected: ""
+escalation_review: ""
+# END MODULE CONTEXT SUMMARY"""
+
+
 from .reasoning import ReasoningAgent
 from .execution import ExecutionAgent
 from .efficiency import EfficiencyAgent

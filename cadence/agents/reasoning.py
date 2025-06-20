@@ -1,3 +1,23 @@
+"""# MODULE CONTEXT SUMMARY
+filepath: cadence/agents/reasoning.py
+purpose: ""
+public_api: [
+    'cadence.agents.reasoning.ReasoningAgent',
+]
+depends_on: []
+used_by: []
+direct_imports: [
+    'base',
+    'subprocess',
+    'sys',
+    'typing',
+]
+related_schemas: []
+context_window_expected: ""
+escalation_review: ""
+# END MODULE CONTEXT SUMMARY"""
+
+
 from typing import Optional
 from .base import BaseAgent
 import sys

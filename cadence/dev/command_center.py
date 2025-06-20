@@ -1,3 +1,22 @@
+"""# MODULE CONTEXT SUMMARY
+filepath: cadence/dev/command_center.py
+purpose: ""
+public_api: []
+depends_on: [
+    'cadence.dev.orchestrator',
+]
+used_by: []
+direct_imports: [
+    'cadence',
+    'pandas',
+    'streamlit',
+]
+related_schemas: []
+context_window_expected: ""
+escalation_review: ""
+# END MODULE CONTEXT SUMMARY"""
+
+
 # Cadence/dev/command_center.py
 
 import streamlit as st

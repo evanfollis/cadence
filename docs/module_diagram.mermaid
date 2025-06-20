@@ -1,0 +1,72 @@
+flowchart TD
+    subgraph CLI/Human
+        CLI[CLI / Human Trigger]
+    end
+
+    subgraph Orchestrator
+        ORCH[DevOrchestrator]
+    end
+
+    subgraph Agents/Roles
+        BACK[BacklogManager]
+        GEN[TaskGenerator]
+        EXEC[TaskExecutor]
+        SHELL[ShellRunner]
+        REV[TaskReviewer]
+        RECORD[TaskRecord]
+        META[MetaAgent]
+    end
+
+    subgraph LLM Layer
+        LLM[LLMClient / Model]
+    end
+
+    subgraph Context Tooling
+        COLLECT[collect_code.py]
+        GENPROMPT[gen_prompt.py]
+        MODCONTEXT[module_contexts.py]
+    end
+
+    %% System Inputs
+    CLI --> ORCH
+
+    %% Main Orchestration Loop
+    ORCH --> BACK
+    ORCH --> GEN
+    ORCH --> EXEC
+    ORCH --> SHELL
+    ORCH --> REV
+    ORCH --> RECORD
+    ORCH --> META
+
+    %% Agent Calls (strictly via orchestrator)
+    BACK --> GEN
+    GEN --> EXEC
+    EXEC --> SHELL
+    SHELL --> REV
+    REV --> ORCH
+
+    %% Task Record Keeping
+    ORCH --> RECORD
+    SHELL --> RECORD
+    REV --> RECORD
+
+    %% Context & Prompt Ingestion (for agents/LLMs)
+    COLLECT --> MODCONTEXT
+    MODCONTEXT --> GENPROMPT
+    GENPROMPT --> ORCH
+    GENPROMPT --> EXEC
+    GENPROMPT --> REV
+
+    %% LLM Interface
+    EXEC --> LLM
+    REV --> LLM
+    GEN --> LLM
+
+    %% MetaAgent oversight loop
+    META --> ORCH
+    META --> RECORD
+
+    %% Human/CLI may directly query backlog or logs, but all changes must go through orchestrator
+    CLI --"view only"--> BACK
+    CLI --"audit/logs"--> RECORD

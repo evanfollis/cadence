@@ -1,3 +1,24 @@
+"""# MODULE CONTEXT SUMMARY
+filepath: cadence/dev/executor.py
+purpose: ""
+public_api: [
+    'cadence.dev.executor.PatchBuildError',
+    'cadence.dev.executor.TaskExecutor',
+]
+depends_on: []
+used_by: []
+direct_imports: [
+    'difflib',
+    'os',
+    'tempfile',
+    'typing',
+]
+related_schemas: []
+context_window_expected: ""
+escalation_review: ""
+# END MODULE CONTEXT SUMMARY"""
+
+
 # cadence/dev/executor.py
 
 """

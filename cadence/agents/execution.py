@@ -1,3 +1,20 @@
+"""# MODULE CONTEXT SUMMARY
+filepath: cadence/agents/execution.py
+purpose: ""
+public_api: [
+    'cadence.agents.execution.ExecutionAgent',
+]
+depends_on: []
+used_by: []
+direct_imports: [
+    'base',
+]
+related_schemas: []
+context_window_expected: ""
+escalation_review: ""
+# END MODULE CONTEXT SUMMARY"""
+
+
 from .base import BaseAgent
 
 class ExecutionAgent(BaseAgent):

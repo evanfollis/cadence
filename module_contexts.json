@@ -1,0 +1,438 @@
+{
+  "tools/collect_code.py": {
+    "purpose": "",
+    "public_api": [
+      "tools.collect_code.collect",
+      "tools.collect_code.main",
+      "tools.collect_code.parse_args"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "__future__",
+      "argparse",
+      "json",
+      "pathlib",
+      "sys"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "tools/collect_code.py"
+  },
+  "tools/gen_prompt.py": {
+    "purpose": "",
+    "public_api": [
+      "tools.gen_prompt._build_prompt",
+      "tools.gen_prompt._collect_files",
+      "tools.gen_prompt._parse_args",
+      "tools.gen_prompt.main"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "__future__",
+      "argparse",
+      "pathlib",
+      "sys",
+      "textwrap"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "tools/gen_prompt.py"
+  },
+  "tools/module_contexts.py": {
+    "purpose": "",
+    "public_api": [
+      "tools.module_contexts.extract_and_strip_shebang_and_futures",
+      "tools.module_contexts.find_existing_context",
+      "tools.module_contexts.get_module_import_path",
+      "tools.module_contexts.load_all_contexts",
+      "tools.module_contexts.parse_module",
+      "tools.module_contexts.print_context",
+      "tools.module_contexts.relpath",
+      "tools.module_contexts.render_context_block",
+      "tools.module_contexts.render_pretty_list",
+      "tools.module_contexts.scan_all_internal_modules",
+      "tools.module_contexts.scan_python_modules",
+      "tools.module_contexts.strip_duplicate_headers_at_top",
+      "tools.module_contexts.sync_contexts",
+      "tools.module_contexts.write_all_contexts"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "ast",
+      "json",
+      "os",
+      "re",
+      "sys"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "tools/module_contexts.py"
+  },
+  "cadence/__init__.py": {
+    "purpose": "",
+    "public_api": [],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/__init__.py"
+  },
+  "cadence/dev/record.py": {
+    "purpose": "",
+    "public_api": [
+      "cadence.dev.record.TaskRecord",
+      "cadence.dev.record.TaskRecordError"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "copy",
+      "datetime",
+      "json",
+      "os",
+      "threading",
+      "typing"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/dev/record.py"
+  },
+  "cadence/dev/shell.py": {
+    "purpose": "",
+    "public_api": [
+      "cadence.dev.shell.ShellCommandError",
+      "cadence.dev.shell.ShellRunner"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "os",
+      "subprocess",
+      "tempfile",
+      "typing"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/dev/shell.py"
+  },
+  "cadence/dev/executor.py": {
+    "purpose": "",
+    "public_api": [
+      "cadence.dev.executor.PatchBuildError",
+      "cadence.dev.executor.TaskExecutor"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "difflib",
+      "os",
+      "tempfile",
+      "typing"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/dev/executor.py"
+  },
+  "cadence/dev/command_center.py": {
+    "purpose": "",
+    "public_api": [],
+    "depends_on": [
+      "cadence.dev.orchestrator"
+    ],
+    "used_by": [],
+    "direct_imports": [
+      "cadence",
+      "pandas",
+      "streamlit"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/dev/command_center.py"
+  },
+  "cadence/dev/orchestrator.py": {
+    "purpose": "",
+    "public_api": [
+      "cadence.dev.orchestrator.DevOrchestrator"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "argparse",
+      "backlog",
+      "executor",
+      "generator",
+      "record",
+      "reviewer",
+      "shell",
+      "sys",
+      "tabulate"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/dev/orchestrator.py"
+  },
+  "cadence/dev/reviewer.py": {
+    "purpose": "",
+    "public_api": [
+      "cadence.dev.reviewer.PatchReviewError",
+      "cadence.dev.reviewer.TaskReviewer"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "json",
+      "os",
+      "typing"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/dev/reviewer.py"
+  },
+  "cadence/dev/__init__.py": {
+    "purpose": "",
+    "public_api": [],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/dev/__init__.py"
+  },
+  "cadence/dev/generator.py": {
+    "purpose": "",
+    "public_api": [
+      "cadence.dev.generator.TaskGenerator",
+      "cadence.dev.generator.TaskTemplateError"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "datetime",
+      "json",
+      "os",
+      "typing",
+      "uuid"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/dev/generator.py"
+  },
+  "cadence/dev/backlog.py": {
+    "purpose": "",
+    "public_api": [
+      "cadence.dev.backlog.BacklogEmptyError",
+      "cadence.dev.backlog.BacklogManager",
+      "cadence.dev.backlog.TaskNotFoundError",
+      "cadence.dev.backlog.TaskStructureError"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "copy",
+      "datetime",
+      "json",
+      "os",
+      "tabulate",
+      "typing",
+      "uuid"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/dev/backlog.py"
+  },
+  "cadence/agents/base.py": {
+    "purpose": "",
+    "public_api": [
+      "cadence.agents.base.BaseAgent"
+    ],
+    "depends_on": [
+      "cadence.llm.client"
+    ],
+    "used_by": [],
+    "direct_imports": [
+      "cadence",
+      "json",
+      "typing"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/agents/base.py"
+  },
+  "cadence/agents/efficiency.py": {
+    "purpose": "",
+    "public_api": [
+      "cadence.agents.efficiency.EfficiencyAgent"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "base"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/agents/efficiency.py"
+  },
+  "cadence/agents/reasoning.py": {
+    "purpose": "",
+    "public_api": [
+      "cadence.agents.reasoning.ReasoningAgent"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "base",
+      "subprocess",
+      "sys",
+      "typing"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/agents/reasoning.py"
+  },
+  "cadence/agents/__init__.py": {
+    "purpose": "",
+    "public_api": [],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/agents/__init__.py"
+  },
+  "cadence/agents/registry.py": {
+    "purpose": "",
+    "public_api": [
+      "cadence.agents.registry.get_agent"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "efficiency",
+      "execution",
+      "reasoning"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/agents/registry.py"
+  },
+  "cadence/agents/execution.py": {
+    "purpose": "",
+    "public_api": [
+      "cadence.agents.execution.ExecutionAgent"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "base"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/agents/execution.py"
+  },
+  "cadence/llm/client.py": {
+    "purpose": "",
+    "public_api": [
+      "cadence.llm.client.LLMClient",
+      "cadence.llm.client.get_default_client",
+      "cadence.llm.client.get_env"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "asyncio",
+      "dotenv",
+      "logging",
+      "openai",
+      "os",
+      "typing"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/llm/client.py"
+  },
+  "cadence/llm/__init__.py": {
+    "purpose": "",
+    "public_api": [],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "cadence/llm/__init__.py"
+  },
+  "examples/test_001/add.py": {
+    "purpose": "",
+    "public_api": [
+      "examples.test_001.add.add"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "examples/test_001/add.py"
+  },
+  "examples/test_001/test_add.py": {
+    "purpose": "",
+    "public_api": [
+      "examples.test_001.test_add.test_add_simple"
+    ],
+    "depends_on": [],
+    "used_by": [],
+    "direct_imports": [
+      "os",
+      "sys",
+      "utils"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "examples/test_001/test_add.py"
+  },
+  "examples/test_001/mvp_loop.py": {
+    "purpose": "",
+    "public_api": [
+      "examples.test_001.mvp_loop.OOP_test",
+      "examples.test_001.mvp_loop.manual_test"
+    ],
+    "depends_on": [
+      "cadence.dev.executor",
+      "cadence.dev.shell"
+    ],
+    "used_by": [],
+    "direct_imports": [
+      "cadence",
+      "pytest"
+    ],
+    "related_schemas": [],
+    "context_window_expected": "",
+    "escalation_review": "",
+    "filepath": "examples/test_001/mvp_loop.py"
+  }
+}

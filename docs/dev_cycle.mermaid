@@ -1,0 +1,53 @@
+flowchart TD
+    %% Start and backlog
+    A0([Project Idea / Requirement])
+    A1[BacklogManager: Add to Backlog]
+    A2[TaskGenerator: Define Microtasks]
+    A3[DevOrchestrator: Select Task]
+
+    %% Patch proposal and execution
+    B1[TaskExecutor: Propose Patch]
+    B2[ShellRunner: Apply Patch In-Memory]
+    B3[ShellRunner: Run Tests]
+    B4{Tests Pass?}
+
+    %% Review phase
+    C1[TaskReviewer: Code/Policy Review]
+    C2{Review Pass?}
+
+    %% Commit or iterate
+    D1[ShellRunner: Commit & Archive]
+    D2[TaskRecord: Log/Archive Outcome]
+    D3[DevOrchestrator: Mark Task Complete]
+    D4([Task / Project Complete])
+
+    %% Failure/iteration
+    F1[DevOrchestrator: Rollback Patch]
+    F2[TaskExecutor: Refine/Retry Patch]
+    F3{Retry Limit?}
+    F4[Escalate to Human / Hard Fail]
+
+    %% Meta/continuous improvement
+    M1[MetaAgent: Monitor, Alert, Optimize]
+
+    %% Connections
+    A0 --> A1 --> A2 --> A3 --> B1 --> B2 --> B3 --> B4
+    B4 -- Yes --> C1 --> C2
+    C2 -- Yes --> D1 --> D2 --> D3 --> D4
+    D2 --> M1
+    D3 --> M1
+
+    %% On test fail, retry loop
+    B4 -- No --> F1 --> F2 --> F3
+    F3 -- "Not Exceeded" --> B1
+    F3 -- "Exceeded" --> F4
+
+    %% On review fail, refine
+    C2 -- No --> F2
+
+    %% MetaAgent monitoring all key phases
+    M1 -.-> A1
+    M1 -.-> A3
+    M1 -.-> B3
+    M1 -.-> C1
+    M1 -.-> D3
