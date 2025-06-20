@@ -1,6 +1,6 @@
 {
   "tools/collect_code.py": {
-    "purpose": "",
+    "purpose": "Collects, filters, and serializes code and documentation from the Cadence codebase into a unified format (JSON or similar). Enables downstream agents, planners, or tools to access up-to-date, structured representations of the codebase for analysis, context injection, or system introspection. Central to maintaining an accurate global code snapshot for orchestration and LLM prompting.",
     "public_api": [
       "tools.collect_code.collect",
       "tools.collect_code.main",
@@ -21,7 +21,7 @@
     "filepath": "tools/collect_code.py"
   },
   "tools/gen_prompt.py": {
-    "purpose": "",
+    "purpose": "Generates rich, contextually appropriate prompts for LLM or agent tasks by assembling relevant code, documentation, and context. Handles dynamic file collection and prompt formatting to optimize code ingestion, summarization, or targeted codebase queries. Serves as the bridge between raw code assets and actionable agent input.",
     "public_api": [
       "tools.gen_prompt._build_prompt",
       "tools.gen_prompt._collect_files",
@@ -43,7 +43,7 @@
     "filepath": "tools/gen_prompt.py"
   },
   "tools/module_contexts.py": {
-    "purpose": "",
+    "purpose": "Extracts, maintains, and synchronizes structured metadata (\u201ccontext\u201d) for every module in the codebase, including public API, dependencies, and purpose. Provides the canonical source for module-level documentation and graph relationships, facilitating dependency analysis, agent task planning, and robust context slicing. Ensures context is current and consistent across JSON and other representations.",
     "public_api": [
       "tools.module_contexts.extract_and_strip_shebang_and_futures",
       "tools.module_contexts.find_existing_context",
@@ -75,7 +75,7 @@
     "filepath": "tools/module_contexts.py"
   },
   "cadence/__init__.py": {
-    "purpose": "",
+    "purpose": "Declares the Cadence root package for Python module discovery. Contains no implementation but is necessary for package structure and internal import resolution.",
     "public_api": [],
     "depends_on": [],
     "used_by": [],
@@ -86,7 +86,7 @@
     "filepath": "cadence/__init__.py"
   },
   "cadence/dev/record.py": {
-    "purpose": "",
+    "purpose": "Implements persistent, immutable task and state recording for all development workflow phases. Tracks the complete lifecycle of each task (creation, assignment, iterations, review outcomes, and archival), ensuring auditability and full historical replay. Guarantees that every action, override, or failure is logged for compliance and analytics.",
     "public_api": [
       "cadence.dev.record.TaskRecord",
       "cadence.dev.record.TaskRecordError"
@@ -107,7 +107,7 @@
     "filepath": "cadence/dev/record.py"
   },
   "cadence/dev/shell.py": {
-    "purpose": "",
+    "purpose": "Provides a safe abstraction for executing shell commands, running local tests, and managing file operations within the orchestrated workflow. Encapsulates error handling and isolation of subprocesses, allowing higher-level roles (e.g., test runners, commit hooks) to interact with the environment in a controlled and auditable manner.",
     "public_api": [
       "cadence.dev.shell.ShellCommandError",
       "cadence.dev.shell.ShellRunner"
@@ -126,7 +126,7 @@
     "filepath": "cadence/dev/shell.py"
   },
   "cadence/dev/executor.py": {
-    "purpose": "",
+    "purpose": "Core implementation of the \u201cTaskExecutor\u201d role: receives a precise task description and produces a proposed code change as a unified diff (patch). Encapsulates patch construction, validation, and integration, acting as the \u201cimplementation\u201d phase of the agentic loop. Ensures no code is modified directly\u2014only via auditable diffs.",
     "public_api": [
       "cadence.dev.executor.PatchBuildError",
       "cadence.dev.executor.TaskExecutor"
@@ -145,7 +145,7 @@
     "filepath": "cadence/dev/executor.py"
   },
   "cadence/dev/command_center.py": {
-    "purpose": "",
+    "purpose": "Aggregates interactive interfaces (CLI, UI, dashboards) for monitoring, guiding, or directly managing the development loop. Orchestrates real-time views of agent activity, backlog, and state, acting as a bridge between human oversight and autonomous agent execution.",
     "public_api": [],
     "depends_on": [
       "cadence.dev.orchestrator"
@@ -162,7 +162,7 @@
     "filepath": "cadence/dev/command_center.py"
   },
   "cadence/dev/orchestrator.py": {
-    "purpose": "",
+    "purpose": "Implements the top-level Orchestrator responsible for strictly sequencing all workflow phases (backlog, generation, execution, testing, review, commit, archival). Sole authority for coordinating all roles and enforcing policy, guardrails, and process compliance. Provides the main CLI and API for human or agentic control over project operations.",
     "public_api": [
       "cadence.dev.orchestrator.DevOrchestrator"
     ],
@@ -185,7 +185,7 @@
     "filepath": "cadence/dev/orchestrator.py"
   },
   "cadence/dev/reviewer.py": {
-    "purpose": "",
+    "purpose": "Implements the \u201cTaskReviewer\u201d role: given a code diff, performs automated or agent-based review for correctness, completeness, style, and policy adherence. Issues pass/fail outcomes and review rationale, blocking or allowing downstream commit/merge actions. Central for maintaining code quality and enforcing multi-agent approval.",
     "public_api": [
       "cadence.dev.reviewer.PatchReviewError",
       "cadence.dev.reviewer.TaskReviewer"
@@ -203,7 +203,7 @@
     "filepath": "cadence/dev/reviewer.py"
   },
   "cadence/dev/__init__.py": {
-    "purpose": "",
+    "purpose": "Declares the Cadence dev subpackage for structured module resolution. Contains no implementation but ensures correct imports for development components.",
     "public_api": [],
     "depends_on": [],
     "used_by": [],
@@ -214,7 +214,7 @@
     "filepath": "cadence/dev/__init__.py"
   },
   "cadence/dev/generator.py": {
-    "purpose": "",
+    "purpose": "Implements the \u201cTaskGenerator\u201d role: proposes, structures, and validates new microtasks (from LLMs, rules, or human suggestions). Ensures every task entering the backlog is well-formed, actionable, and fully specified, maximizing clarity and minimizing ambiguity for execution agents.",
     "public_api": [
       "cadence.dev.generator.TaskGenerator",
       "cadence.dev.generator.TaskTemplateError"
@@ -234,7 +234,7 @@
     "filepath": "cadence/dev/generator.py"
   },
   "cadence/dev/backlog.py": {
-    "purpose": "",
+    "purpose": "Implements the \u201cBacklogManager\u201d role: maintains the prioritized queue of microtasks, stories, and epics for development. Handles task selection, addition, removal, and archival, ensuring the entire project workflow is decomposed, visible, and manageable. Acts as the authoritative source for work-in-progress and pending actions.",
     "public_api": [
       "cadence.dev.backlog.BacklogEmptyError",
       "cadence.dev.backlog.BacklogManager",
@@ -258,7 +258,7 @@
     "filepath": "cadence/dev/backlog.py"
   },
   "cadence/agents/base.py": {
-    "purpose": "",
+    "purpose": "Defines the core Agent interface, encapsulating agent state, communication, and action methods. Provides the abstract base for all agent types (reasoning, execution, efficiency), ensuring consistent lifecycle management and extension points for agent upgrades, LLM swaps, or externalization.",
     "public_api": [
       "cadence.agents.base.BaseAgent"
     ],
@@ -277,7 +277,7 @@
     "filepath": "cadence/agents/base.py"
   },
   "cadence/agents/efficiency.py": {
-    "purpose": "",
+    "purpose": "Implements the \u201cEfficiencyAgent\u201d type: performs fast, low-cost operations such as linting, static analysis, summarization, and pattern detection. Optimized for cost and latency, this agent supplements deeper reasoning and execution agents by catching common errors or inefficiencies early.",
     "public_api": [
       "cadence.agents.efficiency.EfficiencyAgent"
     ],
@@ -292,7 +292,7 @@
     "filepath": "cadence/agents/efficiency.py"
   },
   "cadence/agents/reasoning.py": {
-    "purpose": "",
+    "purpose": "Implements the \u201cReasoningAgent\u201d type: performs high-level planning, architectural review, and policy critique. Handles complex, cross-cutting concerns that require large context windows or deep understanding of the codebase, feeding guidance and constraints into execution agents or task planners.",
     "public_api": [
       "cadence.agents.reasoning.ReasoningAgent"
     ],
@@ -310,7 +310,7 @@
     "filepath": "cadence/agents/reasoning.py"
   },
   "cadence/agents/__init__.py": {
-    "purpose": "",
+    "purpose": "Declares the Cadence agents subpackage for structured module resolution. Contains no implementation but ensures correct imports for agent components.",
     "public_api": [],
     "depends_on": [],
     "used_by": [],
@@ -321,7 +321,7 @@
     "filepath": "cadence/agents/__init__.py"
   },
   "cadence/agents/registry.py": {
-    "purpose": "",
+    "purpose": "Maintains the mapping and instantiation logic for agent types (reasoning, efficiency, execution) by name or capability. Allows orchestrator or planners to dynamically assign, swap, or compose agents for each phase or task, supporting modular, agentic orchestration.",
     "public_api": [
       "cadence.agents.registry.get_agent"
     ],
@@ -338,7 +338,7 @@
     "filepath": "cadence/agents/registry.py"
   },
   "cadence/agents/execution.py": {
-    "purpose": "",
+    "purpose": "Implements the \u201cExecutionAgent\u201d type: tasked with generating large or complex codebase changes, refactorings, or implementations requiring maximal context and autonomy. Interfaces with planners, reviewers, and efficiency agents to ensure diffs are complete, valid, and policy compliant before commit.",
     "public_api": [
       "cadence.agents.execution.ExecutionAgent"
     ],
@@ -353,7 +353,7 @@
     "filepath": "cadence/agents/execution.py"
   },
   "cadence/llm/client.py": {
-    "purpose": "",
+    "purpose": "Abstracts and manages all LLM client connections, credentials, and request handling for Cadence agents. Provides unified access to various model endpoints, context window management, and API configuration, allowing agents to query or delegate to LLMs without bespoke integration code.",
     "public_api": [
       "cadence.llm.client.LLMClient",
       "cadence.llm.client.get_default_client",
@@ -375,7 +375,7 @@
     "filepath": "cadence/llm/client.py"
   },
   "cadence/llm/__init__.py": {
-    "purpose": "",
+    "purpose": "Declares the Cadence LLM subpackage for structured module resolution. Contains no implementation but ensures correct imports for LLM client components.",
     "public_api": [],
     "depends_on": [],
     "used_by": [],
@@ -386,7 +386,7 @@
     "filepath": "cadence/llm/__init__.py"
   },
   "examples/test_001/add.py": {
-    "purpose": "",
+    "purpose": "Simple illustrative example: provides a trivial function (`add`) for use in agentic testing and demo cycles. Serves as a known-correct \u201cgreen\u201d baseline for evaluating the MVP loop and validating that agents can correctly apply and test code patches.",
     "public_api": [
       "examples.test_001.add.add"
     ],
@@ -399,7 +399,7 @@
     "filepath": "examples/test_001/add.py"
   },
   "examples/test_001/test_add.py": {
-    "purpose": "",
+    "purpose": "Provides a minimal unit test for `add.py` in the same example set. Used as the canonical failing/green test for agentic development and automated loop validation, establishing the core pattern for all future test-driven agentic tasks.",
     "public_api": [
       "examples.test_001.test_add.test_add_simple"
     ],
@@ -416,7 +416,7 @@
     "filepath": "examples/test_001/test_add.py"
   },
   "examples/test_001/mvp_loop.py": {
-    "purpose": "",
+    "purpose": "Orchestrates the minimal viable agentic loop (\u201cMVP loop\u201d) in an in-memory, side-effect-free mode. Demonstrates end-to-end agentic task execution: runs tests, triggers agent-based patching, applies diffs, and re-tests until green. The litmus test for Cadence autonomy and correctness.",
     "public_api": [
       "examples.test_001.mvp_loop.OOP_test",
       "examples.test_001.mvp_loop.manual_test"
