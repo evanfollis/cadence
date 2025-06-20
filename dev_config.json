@@ -1,0 +1,8 @@
+{
+  "backlog_path": "dev_backlog.json",
+  "template_file": null,
+  "src_root": "src",
+  "ruleset_file": null,
+  "repo_dir": ".",
+  "record_file": "dev_record.json"
+}

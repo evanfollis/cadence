@@ -1,0 +1,454 @@
+[
+  {
+    "task_id": "bug-fix-add-001",
+    "created_at": "2025-06-20T21:52:36.761759",
+    "history": [
+      {
+        "state": "build_patch",
+        "timestamp": "2025-06-20T21:52:36.761766",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    return x + y\\n"
+          }
+        },
+        "extra": {}
+      },
+      {
+        "state": "patch_built",
+        "timestamp": "2025-06-20T21:52:36.761923",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    return x + y\\n"
+          }
+        },
+        "extra": {
+          "patch": "--- a/cadence/utils/add.py\n+++ b/cadence/utils/add.py\n@@ -1 +1 @@\n-def add(x: int, y: int) -> int:\\n    return x - 1 + y\\n\n+def add(x: int, y: int) -> int:\\n    return x + y\\n\n"
+        }
+      },
+      {
+        "state": "patch_reviewed",
+        "timestamp": "2025-06-20T21:52:36.762137",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    return x + y\\n"
+          }
+        },
+        "extra": {
+          "review": {
+            "pass": true,
+            "comments": ""
+          }
+        }
+      },
+      {
+        "state": "build_patch",
+        "timestamp": "2025-06-20T21:55:11.177818",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    return x + y\\n"
+          }
+        },
+        "extra": {}
+      },
+      {
+        "state": "patch_built",
+        "timestamp": "2025-06-20T21:55:11.178063",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    return x + y\\n"
+          }
+        },
+        "extra": {
+          "patch": "--- a/src/cadence/utils/add.py\n+++ b/src/cadence/utils/add.py\n@@ -1 +1 @@\n-def add(x: int, y: int) -> int:\\n    return x - 1 + y\\n\n+def add(x: int, y: int) -> int:\\n    return x + y\\n\n"
+        }
+      },
+      {
+        "state": "patch_reviewed",
+        "timestamp": "2025-06-20T21:55:11.188615",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    return x + y\\n"
+          }
+        },
+        "extra": {
+          "review": {
+            "pass": true,
+            "comments": ""
+          }
+        }
+      },
+      {
+        "state": "build_patch",
+        "timestamp": "2025-06-20T21:55:36.587853",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    return x + y\\n"
+          }
+        },
+        "extra": {}
+      },
+      {
+        "state": "patch_built",
+        "timestamp": "2025-06-20T21:55:36.588143",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    return x + y\\n"
+          }
+        },
+        "extra": {
+          "patch": "--- a/src/cadence/utils/add.py\n+++ b/src/cadence/utils/add.py\n@@ -1 +1 @@\n-def add(x: int, y: int) -> int:\\n    return x - 1 + y\\n\n+def add(x: int, y: int) -> int:\\n    return x + y\\n\n"
+        }
+      },
+      {
+        "state": "patch_reviewed",
+        "timestamp": "2025-06-20T21:55:36.598634",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    return x + y\\n"
+          }
+        },
+        "extra": {
+          "review": {
+            "pass": true,
+            "comments": ""
+          }
+        }
+      },
+      {
+        "state": "build_patch",
+        "timestamp": "2025-06-20T22:02:10.188189",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x + y\\n"
+          }
+        },
+        "extra": {}
+      },
+      {
+        "state": "patch_built",
+        "timestamp": "2025-06-20T22:02:10.189080",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x + y\\n"
+          }
+        },
+        "extra": {
+          "patch": "--- a/src/cadence/utils/add.py\n+++ b/src/cadence/utils/add.py\n@@ -1 +1 @@\n-def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x - 1 + y\\n\n+def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x + y\\n\n"
+        }
+      },
+      {
+        "state": "patch_reviewed",
+        "timestamp": "2025-06-20T22:02:10.189362",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x + y\\n"
+          }
+        },
+        "extra": {
+          "review": {
+            "pass": true,
+            "comments": ""
+          }
+        }
+      },
+      {
+        "state": "build_patch",
+        "timestamp": "2025-06-20T22:03:11.993539",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x + y\\n"
+          }
+        },
+        "extra": {}
+      },
+      {
+        "state": "patch_built",
+        "timestamp": "2025-06-20T22:03:11.994096",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x + y\\n"
+          }
+        },
+        "extra": {
+          "patch": "--- a/src/cadence/utils/add.py\n+++ b/src/cadence/utils/add.py\n@@ -1 +1 @@\n-def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x - 1 + y\\n\n+def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x + y\\n\n"
+        }
+      },
+      {
+        "state": "patch_reviewed",
+        "timestamp": "2025-06-20T22:03:12.005239",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x + y\\n"
+          }
+        },
+        "extra": {
+          "review": {
+            "pass": true,
+            "comments": ""
+          }
+        }
+      },
+      {
+        "state": "build_patch",
+        "timestamp": "2025-06-20T22:03:57.311713",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x + y\\n"
+          }
+        },
+        "extra": {}
+      },
+      {
+        "state": "patch_built",
+        "timestamp": "2025-06-20T22:03:57.312115",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x + y\\n"
+          }
+        },
+        "extra": {
+          "patch": "--- a/src/cadence/utils/add.py\n+++ b/src/cadence/utils/add.py\n@@ -1 +1 @@\n-def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x - 1 + y\\n\n+def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x + y\\n\n"
+        }
+      },
+      {
+        "state": "patch_reviewed",
+        "timestamp": "2025-06-20T22:03:57.312699",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x - 1 + y\\n",
+            "after": "def add(x: int, y: int) -> int:\\n    \\\"\\\"\\\"Intentionally wrong implementation for MVP red\u2192green demo.\\\"\\\"\\\"\\n    return x + y\\n"
+          }
+        },
+        "extra": {
+          "review": {
+            "pass": true,
+            "comments": ""
+          }
+        }
+      },
+      {
+        "state": "build_patch",
+        "timestamp": "2025-06-20T22:06:21.022518",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x - 1 + y\n",
+            "after": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x + y\n"
+          }
+        },
+        "extra": {}
+      },
+      {
+        "state": "patch_built",
+        "timestamp": "2025-06-20T22:06:21.022938",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x - 1 + y\n",
+            "after": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x + y\n"
+          }
+        },
+        "extra": {
+          "patch": "--- a/src/cadence/utils/add.py\n+++ b/src/cadence/utils/add.py\n@@ -1,3 +1,3 @@\n def add(x: int, y: int) -> int:\n     \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n-    return x - 1 + y\n+    return x + y\n"
+        }
+      },
+      {
+        "state": "patch_reviewed",
+        "timestamp": "2025-06-20T22:06:21.033349",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x - 1 + y\n",
+            "after": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x + y\n"
+          }
+        },
+        "extra": {
+          "review": {
+            "pass": true,
+            "comments": ""
+          }
+        }
+      },
+      {
+        "state": "patch_applied",
+        "timestamp": "2025-06-20T22:06:21.034925",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x - 1 + y\n",
+            "after": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x + y\n"
+          }
+        },
+        "extra": {}
+      },
+      {
+        "state": "pytest_run",
+        "timestamp": "2025-06-20T22:06:21.219907",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x - 1 + y\n",
+            "after": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x + y\n"
+          }
+        },
+        "extra": {
+          "pytest": {
+            "success": true,
+            "output": ".                                                                        [100%]\n1 passed in 0.00s"
+          }
+        }
+      }
+    ],
+    "iterations": []
+  }
+]

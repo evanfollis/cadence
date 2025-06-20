@@ -1,3 +1,5 @@
 openai
 dotenv
 pytest
+mypy
+tiktoken
