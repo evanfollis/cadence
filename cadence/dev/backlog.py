@@ -1,28 +1,3 @@
-"""# MODULE CONTEXT SUMMARY
-filepath: cadence/dev/backlog.py
-purpose: ""
-public_api: [
-    'cadence.dev.backlog.BacklogEmptyError',
-    'cadence.dev.backlog.BacklogManager',
-    'cadence.dev.backlog.TaskNotFoundError',
-    'cadence.dev.backlog.TaskStructureError',
-]
-depends_on: []
-used_by: []
-direct_imports: [
-    'copy',
-    'datetime',
-    'json',
-    'os',
-    'tabulate',
-    'typing',
-    'uuid',
-]
-related_schemas: []
-context_window_expected: ""
-escalation_review: ""
-# END MODULE CONTEXT SUMMARY"""
-
 
 # cadence/dev/backlog.py
 

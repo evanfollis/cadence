@@ -1,23 +1,3 @@
-"""# MODULE CONTEXT SUMMARY
-filepath: cadence/dev/shell.py
-purpose: ""
-public_api: [
-    'cadence.dev.shell.ShellCommandError',
-    'cadence.dev.shell.ShellRunner',
-]
-depends_on: []
-used_by: []
-direct_imports: [
-    'os',
-    'subprocess',
-    'tempfile',
-    'typing',
-]
-related_schemas: []
-context_window_expected: ""
-escalation_review: ""
-# END MODULE CONTEXT SUMMARY"""
-
 
 # cadence/dev/shell.py
 

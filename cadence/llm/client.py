@@ -1,26 +1,3 @@
-"""# MODULE CONTEXT SUMMARY
-filepath: cadence/llm/client.py
-purpose: ""
-public_api: [
-    'cadence.llm.client.LLMClient',
-    'cadence.llm.client.get_default_client',
-    'cadence.llm.client.get_env',
-]
-depends_on: []
-used_by: []
-direct_imports: [
-    'asyncio',
-    'dotenv',
-    'logging',
-    'openai',
-    'os',
-    'typing',
-]
-related_schemas: []
-context_window_expected: ""
-escalation_review: ""
-# END MODULE CONTEXT SUMMARY"""
-
 
 import os
 import logging

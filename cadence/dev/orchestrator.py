@@ -1,27 +1,3 @@
-"""# MODULE CONTEXT SUMMARY
-filepath: cadence/dev/orchestrator.py
-purpose: ""
-public_api: [
-    'cadence.dev.orchestrator.DevOrchestrator',
-]
-depends_on: []
-used_by: []
-direct_imports: [
-    'argparse',
-    'backlog',
-    'executor',
-    'generator',
-    'record',
-    'reviewer',
-    'shell',
-    'sys',
-    'tabulate',
-]
-related_schemas: []
-context_window_expected: ""
-escalation_review: ""
-# END MODULE CONTEXT SUMMARY"""
-
 
 # cadence/dev/orchestrator.py
 

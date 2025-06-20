@@ -1,36 +1,3 @@
-"""# MODULE CONTEXT SUMMARY
-filepath: tools/module_contexts.py
-purpose: ""
-public_api: [
-    'tools.module_contexts.extract_and_strip_shebang_and_futures',
-    'tools.module_contexts.find_existing_context',
-    'tools.module_contexts.get_module_import_path',
-    'tools.module_contexts.load_all_contexts',
-    'tools.module_contexts.parse_module',
-    'tools.module_contexts.print_context',
-    'tools.module_contexts.relpath',
-    'tools.module_contexts.render_context_block',
-    'tools.module_contexts.render_pretty_list',
-    'tools.module_contexts.scan_all_internal_modules',
-    'tools.module_contexts.scan_python_modules',
-    'tools.module_contexts.strip_duplicate_headers_at_top',
-    'tools.module_contexts.sync_contexts',
-    'tools.module_contexts.write_all_contexts',
-]
-depends_on: []
-used_by: []
-direct_imports: [
-    'ast',
-    'json',
-    'os',
-    're',
-    'sys',
-]
-related_schemas: []
-context_window_expected: ""
-escalation_review: ""
-# END MODULE CONTEXT SUMMARY"""
-
 
 import os
 import json

@@ -1,24 +1,3 @@
-"""# MODULE CONTEXT SUMMARY
-filepath: cadence/dev/generator.py
-purpose: ""
-public_api: [
-    'cadence.dev.generator.TaskGenerator',
-    'cadence.dev.generator.TaskTemplateError',
-]
-depends_on: []
-used_by: []
-direct_imports: [
-    'datetime',
-    'json',
-    'os',
-    'typing',
-    'uuid',
-]
-related_schemas: []
-context_window_expected: ""
-escalation_review: ""
-# END MODULE CONTEXT SUMMARY"""
-
 
 # cadence/dev/generator.py
 

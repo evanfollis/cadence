@@ -1,27 +1,5 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-"""# MODULE CONTEXT SUMMARY
-filepath: tools/collect_code.py
-purpose: ""
-public_api: [
-    'tools.collect_code.collect',
-    'tools.collect_code.main',
-    'tools.collect_code.parse_args',
-]
-depends_on: []
-used_by: []
-direct_imports: [
-    '__future__',
-    'argparse',
-    'json',
-    'pathlib',
-    'sys',
-]
-related_schemas: []
-context_window_expected: ""
-escalation_review: ""
-# END MODULE CONTEXT SUMMARY"""
-
 
 """
 collect_code.py  –  Export Cadence source files to a single JSON payload.

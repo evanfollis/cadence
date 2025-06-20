@@ -1,28 +1,5 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-"""# MODULE CONTEXT SUMMARY
-filepath: tools/gen_prompt.py
-purpose: ""
-public_api: [
-    'tools.gen_prompt._build_prompt',
-    'tools.gen_prompt._collect_files',
-    'tools.gen_prompt._parse_args',
-    'tools.gen_prompt.main',
-]
-depends_on: []
-used_by: []
-direct_imports: [
-    '__future__',
-    'argparse',
-    'pathlib',
-    'sys',
-    'textwrap',
-]
-related_schemas: []
-context_window_expected: ""
-escalation_review: ""
-# END MODULE CONTEXT SUMMARY"""
-
 
 """
 gen_prompt.py  –  Assemble a mega-prompt that contains

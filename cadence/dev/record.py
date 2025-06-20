@@ -1,25 +1,3 @@
-"""# MODULE CONTEXT SUMMARY
-filepath: cadence/dev/record.py
-purpose: ""
-public_api: [
-    'cadence.dev.record.TaskRecord',
-    'cadence.dev.record.TaskRecordError',
-]
-depends_on: []
-used_by: []
-direct_imports: [
-    'copy',
-    'datetime',
-    'json',
-    'os',
-    'threading',
-    'typing',
-]
-related_schemas: []
-context_window_expected: ""
-escalation_review: ""
-# END MODULE CONTEXT SUMMARY"""
-
 
 # cadence/dev/record.py
 

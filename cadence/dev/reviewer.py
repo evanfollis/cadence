@@ -1,22 +1,3 @@
-"""# MODULE CONTEXT SUMMARY
-filepath: cadence/dev/reviewer.py
-purpose: ""
-public_api: [
-    'cadence.dev.reviewer.PatchReviewError',
-    'cadence.dev.reviewer.TaskReviewer',
-]
-depends_on: []
-used_by: []
-direct_imports: [
-    'json',
-    'os',
-    'typing',
-]
-related_schemas: []
-context_window_expected: ""
-escalation_review: ""
-# END MODULE CONTEXT SUMMARY"""
-
 
 # cadence/dev/reviewer.py
 
