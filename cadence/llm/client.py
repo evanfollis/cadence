@@ -73,7 +73,7 @@ class LLMClient:
         response = self._sync_client.chat.completions.create(
             model=used_model,
             messages=msgs,
-            max_tokens=max_tokens,
+            # max_tokens=max_tokens,
             **kwargs
         )
         content = response.choices[0].message.content.strip()
