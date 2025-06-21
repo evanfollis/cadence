@@ -1,4 +1,4 @@
-# ./cadence/agents/sidekick.py
+# src/cadence/agents/sidekick.py
 """
 Persona agent that *delegates* to a ReasoningAgent but presents a
 human-centric mentor/advisor interface.

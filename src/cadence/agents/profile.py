@@ -1,4 +1,4 @@
-# ./cadence/agents/profile.py
+# src/cadence/agents/profile.py
 from dataclasses import dataclass, field
 from typing import Dict, Any
 

@@ -1,8 +1,8 @@
-# ./cadence/utils/mvp_loop.py
+# src/cadence/utils/mvp_loop.py
 
 import pytest
-from cadence.dev.executor import TaskExecutor
-from cadence.dev.shell import ShellRunner
+from src.cadence.dev.executor import TaskExecutor
+from src.cadence.dev.shell import ShellRunner
 
 def manual_test():
     result = pytest.main(["tests"])

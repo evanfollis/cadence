@@ -1,5 +1,5 @@
 
-# cadence/dev/orchestrator.py
+# src/cadence/dev/orchestrator.py
 
 """
 Cadence DevOrchestrator
@@ -27,6 +27,20 @@ class DevOrchestrator:
         self.reviewer = TaskReviewer(config.get("ruleset_file"))
         self.shell = ShellRunner(config["repo_dir"])
         self.record = TaskRecord(config["record_file"])
+
+    # ------------------------------------------------------------------ #
+    # Internal helper – ALWAYS log, never raise
+    # ------------------------------------------------------------------ #
+    def _record(self, task: dict, state: str, extra: dict | None = None) -> None:
+        """
+        Wrapper around TaskRecord.save().  If the recorder itself fails we
+        print to stderr but do **not** stop the main workflow.
+        """
+        try:
+            self.record.save(task, state=state, extra=extra or {})
+        except TaskRecordError as e:          # keep original import
+            import sys                       # local import → avoids circularity
+            print(f"[Record-Error] {e}", file=sys.stderr)
 
     # ----- Backlog overview -----
     def show(self, status: str = "open", printout: bool = True):
@@ -88,32 +102,44 @@ class DevOrchestrator:
             print(f"\n[Selected task: {task['id'][:8]}] {task.get('title')}\n")
 
             # 2. Build a patch from executor
-            self.record.save(task, state="build_patch")
-            patch = self.executor.build_patch(task)
-            self.record.save(task, state="patch_built", extra={"patch": patch})
-            print("--- Patch built ---\n", patch)
+            self._record(task, "build_patch")
+            try:
+                patch = self.executor.build_patch(task)
+                self._record(task, "patch_built", {"patch": patch})
+                print("--- Patch built ---\n", patch)
+            except PatchBuildError as ex:
+                self._record(task, "failed_build_patch", {"error": str(ex)})
+                print(f"[X] Patch build failed: {ex}")
+                return {"success": False, "stage": "build_patch", "error": str(ex)}
 
             # 3. Reviewer initial check
             review1 = self.reviewer.review_patch(patch, context=task)
-            self.record.save(task, state="patch_reviewed", extra={"review": review1})
+            self._record(task, "patch_reviewed", {"review": review1})
             print("--- Review 1 ---")
             print(review1["comments"])
             if not review1["pass"]:
+                self._record(task, "failed_patch_review", {"review": review1})
                 print(f"[X] Patch failed review, aborting (state recorded).")
                 return {"success": False, "stage": "patch_review", "review": review1}
 
             # 4. Apply patch via shell/git (never apply if review failed)
-            applied = self.shell.git_apply(patch)
-            self.record.save(task, state="patch_applied", extra={})
-            print("[✔] Patch applied.")
+            try:
+                self.shell.git_apply(patch)
+                self._record(task, "patch_applied")
+                print("[✔] Patch applied.")
+            except ShellCommandError as ex:
+                print(f"[X] git apply failed: {ex}")
+                self._record(task, "failed_patch_apply", {"error": str(ex)})
+                return {"success": False, "stage": "patch_apply", "error": str(ex)}
 
             # 5. Run tests (pytest, whole repo or tests path)
             test_result = self.shell.run_pytest()
-            self.record.save(task, state="pytest_run", extra={"pytest": test_result})
+            self._record(task, "pytest_run", {"pytest": test_result})
             print("--- Pytest ---")
             print(test_result["output"])
             if not test_result["success"]:
                 print(f"[X] Tests FAILED, aborting before commit (state recorded).")
+                self._record(task, "failed_test", {"pytest": test_result})
                 return {"success": False, "stage": "test", "test_result": test_result}
 
             # 6. Final review (optional): can trigger another review step here
@@ -121,19 +147,28 @@ class DevOrchestrator:
 
             # 7. git commit, record commit SHA
             commit_msg = f"[Cadence] {task['id'][:8]} {task.get('title', '')}"
-            sha = self.shell.git_commit(commit_msg)
-            self.record.save(task, state="committed", extra={"commit_sha": sha})
-            print(f"[✔] Committed as {sha}")
+            try:
+                sha = self.shell.git_commit(commit_msg)
+                self._record(task, "committed", {"commit_sha": sha})
+                print(f"[✔] Committed as {sha}")
+            except ShellCommandError as ex:
+                self._record(task, "failed_commit", {"error": str(ex)})
+                print(f"[X] git commit failed: {ex}")
+                return {"success": False, "stage": "commit", "error": str(ex)}
 
             # 8. Mark task done in backlog and archive
             self.backlog.update_item(task["id"], {"status": "done"})
+            task = self.backlog.get_item(task["id"])    # refresh
             self.backlog.archive_completed()
-            self.record.save(task, state="archived", extra={})
+            task = self.backlog.get_item(task["id"])    # status == archived
+            self._record(task, "archived")
             print("[✔] Task marked done and archived.")
 
             return {"success": True, "commit": sha, "task_id": task["id"]}
 
         except Exception as ex:
+            if "task" in locals():
+                self._record(task, "failed_unexpected", {"error": str(ex)})
             print(f"[X] Cycle failed: {ex}")
             return {"success": False, "error": str(ex)}
 

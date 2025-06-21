@@ -1,11 +1,11 @@
-# ./cadence/agents/base.py
+# src/cadence/agents/base.py
 from __future__ import annotations
 
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 
-from cadence.llm.client import LLMClient, get_default_client
-from cadence.context.provider import ContextProvider, SnapshotContextProvider
+from src.cadence.llm.client import LLMClient, get_default_client
+from src.cadence.context.provider import ContextProvider, SnapshotContextProvider
 from .profile import AgentProfile
 
 

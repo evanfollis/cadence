@@ -1,5 +1,5 @@
 
-# cadence/dev/generator.py
+# src/cadence/dev/generator.py
 
 """
 Cadence TaskGenerator

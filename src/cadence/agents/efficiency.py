@@ -1,4 +1,4 @@
-# ./cadence/agents/efficiency.py
+# src/cadence/agents/efficiency.py
 from __future__ import annotations
 
 from .base import BaseAgent

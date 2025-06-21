@@ -1,10 +1,10 @@
 
-# Cadence/dev/command_center.py
+# src/cadence/dev/command_center.py
 
 import streamlit as st
 
 # You may need to adjust the import path according to your setup
-from cadence.dev.orchestrator import DevOrchestrator
+from src.cadence.dev.orchestrator import DevOrchestrator
 
 # ---- Basic Config (map to your dev environment) ----
 CONFIG = dict(
@@ -88,7 +88,7 @@ elif phase == "Patch Review":
             if st.button("Approve and Apply Patch"):
                 # Apply patch, save, and proceed
                 orch.shell.git_apply(patch)
-                orch.record.save(task, state="patch_applied", extra={})
+                orch._record(task, "patch_applied")
                 st.success("Patch applied.")
                 st.session_state["phase"] = "Run Test"
                 st.experimental_rerun()
@@ -122,8 +122,11 @@ elif phase == "Run Test":
                 sha = orch.shell.git_commit(f"[Cadence] {task['id'][:8]} {task.get('title', '')}")
                 orch.backlog.update_item(task_id, {"status": "done"})
                 orch.backlog.archive_completed()
+                # commit snapshot (task is still 'done' here)
                 orch.record.save(task, state="committed", extra={"commit_sha": sha})
-                orch.record.save(task, state="archived", extra={})
+                # refresh snapshot so we accurately log 'archived'
+                updated_task = orch.backlog.get_item(task_id)
+                orch.record.save(updated_task, state="archived", extra={})
                 st.session_state["phase"] = "Archive"
                 st.experimental_rerun()
         else:

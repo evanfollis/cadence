@@ -1,4 +1,4 @@
-# ./cadence/agents/registry.py
+# src/cadence/agents/registry.py
 """
 Single place to obtain a Core Agent or Profile.
 

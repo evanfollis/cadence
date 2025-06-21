@@ -1,5 +1,5 @@
 
-# cadence/dev/shell.py
+# src/cadence/dev/shell.py
 
 """
 Cadence ShellRunner
