@@ -447,6 +447,42 @@
             "output": ".                                                                        [100%]\n1 passed in 0.00s"
           }
         }
+      },
+      {
+        "state": "committed",
+        "timestamp": "2025-06-20T22:06:21.263065",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x - 1 + y\n",
+            "after": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x + y\n"
+          }
+        },
+        "extra": {
+          "commit_sha": "7649f3a1d1cedb2ecc4dbc528b471431c3467a87"
+        }
+      },
+      {
+        "state": "archived",
+        "timestamp": "2025-06-20T22:06:21.263745",
+        "task": {
+          "id": "bug-fix-add-001",
+          "title": "Fix utils.add.add() so that add(2,3)==5",
+          "type": "micro",
+          "status": "archived",
+          "created_at": "2025-06-21T00:00:00Z",
+          "diff": {
+            "file": "src/cadence/utils/add.py",
+            "before": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x - 1 + y\n",
+            "after": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x + y\n"
+          }
+        },
+        "extra": {}
       }
     ],
     "iterations": []

@@ -1,0 +1,173 @@
+Below is an ultra-granular, source-driven trace of what actually happens to a single task, beginning with the raw backlog JSON file on disk and ending (when everything goes well) with an archived, completed task.  Every statement that is executed in the happy-path is accounted for.  Whenever the static code reveals an ambiguity, contradiction, or outright hole, it is called out in “GAP ⟶ …” blocks.
+
+Lines are referenced with the exact file / function / line-number (≈) from the current repository you provided (src/…).  Indentation shows call-stack depth.
+
+────────────────────────────────────────────────────────────────────────────
+0.  THE BACKLOG FILE ON DISK
+────────────────────────────────────────────────────────────────────────────
+• Path expected by DevOrchestrator CONFIG = "dev_backlog.json"
+(src/cadence/dev/orchestrator.py ≈L34; command-center uses same default)
+
+GAP ⟶ Docs & user prompt mention “./backlog/backlog.json”.
+Code never looks at that path.  Unless the caller’s CONFIG overrides
+backlog_path, the file must be exactly dev_backlog.json.
+
+Assume therefore dev_backlog.json exists and contains valid UTF-8 JSON.
+
+────────────────────────────────────────────────────────────────────────────
+
+1.  DevOrchestrator object is created ──────────────────────────────────────────────────────────────────────────── 
+call DevOrchestrator.init(config) (orchestrator.py ≈L20)
+1.1  BacklogManager instantiation
+• BacklogManager.init(backlog_path)  (backlog.py ≈L31)
+
+ 1.1.1 BacklogManager.load()             (backlog.py ≈L58)
+        ├─ opens file `dev_backlog.json`
+        ├─ json.load → Python list[dict]  (ValueError if not list)
+        ├─ for each task → _normalize_task(task)  (≈L73)
+            • fills defaults, generates UUID if missing
+            • DOES NOT deduplicate IDs at load time
+        └─ self._items now holds in-memory backlog
+
+ 1.1.2 returns control to DevOrchestrator.__init__
+
+1.2  TaskGenerator / TaskExecutor / TaskReviewer / ShellRunner / TaskRecord
+are all constructed but do nothing IO-wise yet
+(orchestrator.py ≈L23–28).
+– TaskGenerator loads template only if template_file supplied.
+– TaskRecord loads or creates dev_record.json (record.py ≈L26).
+
+────────────────────────────────────────────────────────────────────────────
+2.  One run of run_task_cycle()  (orchestrator.py ≈L47)
+────────────────────────────────────────────────────────────────────────────
+Assume caller invokes
+orch.run_task_cycle(select_id=None, interactive=False)
+to let the orchestrator pick the first open task automatically.
+
+2.1  SELECT TASK                                         (≈L65-84)
+• open_tasks = BacklogManager.list_items("open")    (backlog.py ≈L38)
+• Task chosen = open_tasks[0]
+• Prints shortlist (for CLI only)
+• No state change yet
+
+ GAP ⟶ No lock around backlog; concurrent writers could reorder tasks.
+2.2  RECORD: “build_patch”                               (record.py ≈L19)
+TaskRecord.save(task, state="build_patch")
+• _find_or_create_record creates new entry keyed by task["id"]
+• Snapshots the current task dict
+
+2.3  BUILD PATCH                                         (executor.py ≈L19-56)
+patch = TaskExecutor.build_patch(task)
+
+ Detailed internal sequence:
+    a) diff_info = task.get("diff")          ↘ if None → PatchBuildError
+    b) Extract 'file', 'before', 'after'
+    c) Ensure newline at EOF for valid diff
+    d) difflib.unified_diff → List[str]
+    e) join → `patch`
+    f) if `not patch.strip()` → PatchBuildError
+ Returns patch str (unapplied)
+
+ GAP ⟶ If the task came from backlog with no "diff" key, the call throws
+        and the entire cycle aborts; there is no earlier validation.
+2.4  RECORD: “patch_built”                               (record.py again)
+extra={"patch": patch}
+
+2.5  REVIEW PATCH                                        (reviewer.py ≈L15-66)
+review = TaskReviewer.review_patch(patch, context=task)
+
+ Rule pipeline (default):
+    • not_empty_rule
+    • startswith_rule
+    • contains_todo_rule
+    • size_limit_rule
+ Returns dict {"pass": bool, "comments": str}
+
+ If review["pass"] is False:
+    – RECORD already done
+    – run_task_cycle returns {"success": False, "stage": "patch_review"}
+
+ GAP ⟶ No facility to auto-refine or request changes; cycle just ends.
+2.6  APPLY PATCH (only if review pass)                   (shell.py ≈L17-41)
+ShellRunner.git_apply(patch)
+a) writes patch to tmpfile
+b) subprocess.run(["git", "apply", tmpfile])
+c) if returncode != 0 → ShellCommandError
+
+ RECORD: “patch_applied” (no extra payload)
+
+ GAP ⟶ If git apply fails *after* review pass there is no catch block;
+        exception escapes → run_task_cycle except → prints “[X] Cycle failed”
+        but state “patch_apply_failed” is never saved.
+2.7  RUN PYTEST                                          (shell.py ≈L43-75)
+test_result = run_pytest()
+a) default path = "./tests" (or repo root param)
+b) subprocess.run(["pytest", "-q", path])
+c) returns {"success": bool, "output": str}
+
+ RECORD: “pytest_run”, extra={"pytest": test_result}
+
+ If tests fail:
+    – run_task_cycle returns {"success": False, "stage": "test"}
+
+ GAP ⟶ No automatic reversion of applied patch on failure.  
+        Working tree is now dirty.
+2.8  COMMIT                                              (shell.py ≈L77-115)
+sha = git_commit(commit_msg)
+a) git add -A
+b) git commit -m msg
+c) git rev-parse HEAD → SHA str
+
+ RECORD: “committed”, extra={"commit_sha": sha}
+
+ GAP ⟶ If git commit finds “nothing to commit”, ShellCommandError is raised
+        and run_task_cycle aborts.  The patch was applied & tests passed
+        but the record never stores that failure reason.
+2.9  BACKLOG STATUS UPDATE                               (backlog.py ≈L100)
+BacklogManager.update_item(task_id, {"status": "done"})
+BacklogManager.archive_completed()                  (≈L46-56)
+
+ • archive_completed loops over in-memory items,
+   mutating those with status "done" → "archived", then save()
+
+ SAVE writes full backlog JSON via tmp-swap
+
+ GAP ⟶ The `task` variable captured earlier is **not** mutated with the
+        new status values; yet it is used again in the final record step.
+        Therefore TaskRecord.history shows stale `"status": "open"`.
+2.10 RECORD: “archived”  (record.py save again)
+extra={} – but task snapshot is stale (see previous GAP)
+
+  Cycle returns {"success": True, "commit": sha, "task_id": …}
+────────────────────────────────────────────────────────────────────────────
+3.  OFF-HAPPY-PATH & MISSING PIECES
+────────────────────────────────────────────────────────────────────────────
+Below are all discoverable holes, each traceable to concrete lines.
+
+1. Backlog path mismatch (docs vs code) (see §0)
+2. No generator→backlog link: TaskGenerator never invoked to repopulate an empty backlog. run_task_cycle just throws. (orchestrator.py ≈L59)
+3. No concurrency protection on BacklogManager; race conditions possible in multi-thread / multi-process orchestration. (backlog.py)
+4. Record states are partially silent on failure branches: • git_apply failure • git_commit “nothing to commit” • Unexpected exceptions in shell or executor
+5. Patch rollback logic absent; failed tests leave working tree modified and inconsistent with commit history.
+6. Task snapshot drift: final “archived” history entry does not reflect ‘status’: 'archived'. (orchestrator.py ≈L114)
+7. Meta-agent, EfficiencyAgent second review, and strict phase table (docs/DEV_PROCESS.md) are declared but never invoked.
+8. No top-level guard that prevents skipping phases; a caller could call ShellRunner.git_commit directly and bypass review.
+9. TaskReviewer ruleset loading silently ignores unknown rule types instead of alerting; potential policy slip. (reviewer.py ≈L70-91)
+10. TaskExecutor does not verify that diff ‘before’ truly matches file on disk; stale diff can apply hunks out-of-context.
+────────────────────────────────────────────────────────────────────────────
+4.  RECOMMENDED NEXT BRIDGES (minimal code touches)
+────────────────────────────────────────────────────────────────────────────
+• Add BacklogManager.lock (threading.RLock) around all mutators.
+• On every failure branch in run_task_cycle, call
+record.save(task, state="failed_<stage>", extra={...}).
+• After git_apply but before tests, compute and save a reverse diff
+so orchestrator can automatically rollback on failure.
+• Mutate local task variable after backlog.update_item so archive
+snapshot is truthful.
+• Provide DevOrchestrator.ensure_backlog() that calls
+TaskGenerator.generate_tasks when backlog empty.
+• Wire second review phase (EfficiencyAgent) to honour docs/DEV_PROCESS.md.
+• Expose a decorator or context manager to enforce phase sequencing
+and prevent direct access to ShellRunner in user code.
+
+That is the complete, code-verifiable journey from JSON backlog entry to archived task, with every identifiable gap surfaced.
