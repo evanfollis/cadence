@@ -1,14 +1,58 @@
 [
   {
-    "id": "bug-fix-add-001",
-    "title": "Fix utils.add.add() so that add(2,3)==5",
+    "title": "TASK-1 Auto-replenish backlog",
+    "description": "Title: Auto-replenish backlog when empty\nGoal: Keep the pipeline perpetually flowing without human babysitting.\nImplementation Steps:\n\n1. Add\u00a0**`DevOrchestrator._ensure_backlog()`**\u00a0\u2022 If\u00a0**`self.backlog.list_items(\"open\")`**\u00a0is empty, call\u00a0**`TaskGenerator.generate_tasks(mode=\"micro\", count=<N>)`**\u00a0(N default = 3; expose CLI flag).\u00a0\u2022 Persist the newly generated tasks with\u00a0**`BacklogManager.add_item`**.\u00a0\u2022 Record snapshot:\u00a0**`state=\"backlog_replenished\"`**, extra={\"count\": N}.\n2. Call\u00a0**`_ensure_backlog()`**\u00a0at the very top of\u00a0**`run_task_cycle()`**.\n3. Unit test: run an orchestrator in a temp repo with an empty backlog, assert it auto-populates.\n\nAcceptance: **`run_task_cycle(interactive=False)`** no longer raises **`RuntimeError`** when no tasks exist.\n",
+    "status": "open",
+    "id": "ba002f7b-742f-4dce-911f-175c455bd673",
     "type": "micro",
-    "status": "archived",
-    "created_at": "2025-06-21T00:00:00Z",
-    "diff": {
-      "file": "src/cadence/utils/add.py",
-      "before": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x - 1 + y\n",
-      "after": "def add(x: int, y: int) -> int:\n    \"\"\"Intentionally wrong implementation for MVP red\u2192green demo.\"\"\"\n    return x + y\n"
-    }
+    "created_at": "2025-06-21T23:48:17.392877"
+  },
+  {
+    "title": "TASK-2 EfficiencyAgent second review",
+    "description": "Title: Wire EfficiencyAgent as mandatory second review\nGoal: Conform to DEV_PROCESS phase table (\u201cReview\u201d \u2192 Reasoning *and* Efficiency).\nImplementation Steps:\n\n1. In\u00a0**`DevOrchestrator.__init__`**\u00a0create\u00a0**`self.efficiency = get_agent(\"efficiency\")`**.\n2. After\u00a0**first**\u00a0review passes, call\u00a0**`eff_review = self.efficiency.run_interaction(<prompt_with_patch>)`**\u00a0or, simpler for now, reuse\u00a0**`TaskReviewer`**\u00a0but tag the state\u00a0**`\"efficiency_reviewed\"`**.\n3. Fail the task cycle unless both reviews pass.\n4. Record both review results with distinct states:\u00a0**`\"patch_reviewed_reasoning\"`**\u00a0/\u00a0**`\"patch_reviewed_efficiency\"`**.\n5. Extend phase flags so\u00a0**`git_commit`**\u00a0requires\u00a0**`\"efficiency_passed\"`**\u00a0as well.\n\nAcceptance: A commit cannot occur unless *both* reviews have succeeded; tests updated accordingly.",
+    "status": "open",
+    "id": "63014e53-0364-4b4d-aea4-6f43053e3368",
+    "type": "micro",
+    "created_at": "2025-06-21T23:48:17.393826"
+  },
+  {
+    "title": "TASK-3 MetaAgent hook",
+    "description": "Title: First-class MetaAgent hook\nGoal: Provide real-time governance / drift detection per DEV_PROCESS.\nImplementation Steps:\n\n1. Add simple\u00a0**`MetaAgent.analyse(run_summary: dict)`**\u00a0stub that just logs or appends to TaskRecord.\n2. Call it at the end of every\u00a0**`run_task_cycle()`**\u00a0(success\u00a0*or*\u00a0failure) with the full result dict.\n3. Record state\u00a0**`\"meta_analysis\"`**\u00a0plus whatever telemetry the MetaAgent returns.\n4. (Future-proof) Keep invocation behind\u00a0**`config[\"enable_meta\"]`**\u00a0flag (default True).\n\nAcceptance: TaskRecord shows a **`meta_analysis`** snapshot for every cycle; meta failures do not crash the run.",
+    "status": "open",
+    "id": "3f54ce61-cd7a-4e9a-b6aa-008c23748873",
+    "type": "micro",
+    "created_at": "2025-06-21T23:48:17.394043"
+  },
+  {
+    "title": "TASK-4 Reviewer strict rule types",
+    "description": "Title: Harden TaskReviewer rule parsing\nGoal: Unknown rule types must never be ignored silently.\nImplementation Steps:\n\n1. In\u00a0**`TaskReviewer._load_ruleset`**\u00a0raise\u00a0**`PatchReviewError`**\u00a0**or**\u00a0emit\u00a0**`logger.warning`**\u00a0when\u00a0**`type`**\u00a0is unrecognised.\n2. Provide\u00a0**`strict`**\u00a0constructor flag (default True).\n3. Add regression test loading a ruleset with an invalid type \u2192 expect exception or warning.\n\nAcceptance: CI fails (or logs) on an unrecognised rule type; no silent pass.",
+    "status": "open",
+    "id": "fdbcdfae-1a3f-4023-a79e-49e40c69371e",
+    "type": "micro",
+    "created_at": "2025-06-21T23:48:17.394250"
+  },
+  {
+    "title": "TASK-5 Commit guard review flags",
+    "description": "Title: Expand enforce_phase \u2192 include review guards\nGoal: Prevent any commit unless **`\"review_passed\"`** *and* **`\"efficiency_passed\"`** flags exist.\nImplementation Steps:\n\n1. Add new decorator usage or explicit check in\u00a0**`ShellRunner.git_commit`**:\u00a0required = [\"patch_applied\", \"tests_passed\", \"review_passed\", \"efficiency_passed\"]\n2. Set those flags inside DevOrchestrator right after each successful review.\n3. Update tests in test_phase_ordering_and_precheck.py to assert commit fails without both review flags.\n\nAcceptance: New tests pass; existing tests updated to set the new flags on the happy path.",
+    "status": "open",
+    "id": "4a9b332c-0bfc-4d85-a732-c70338cb00cb",
+    "type": "micro",
+    "created_at": "2025-06-21T23:48:17.394482"
+  },
+  {
+    "title": "TASK-6 Cross-process file locks",
+    "description": "Title: Cross-process file-locking for backlog & record\nGoal: Prevent two orchestrators on the same repo from racing.\nImplementation Steps:\n\n1. Add lightweight cross-process lock via\u00a0**`filelock`**\u00a0(pip-light) or portalocker.\n2. Acquire the lock in\u00a0**`.save()`**\u00a0and\u00a0**`.load()`**\u00a0of BacklogManager & TaskRecord\u00a0*in addition*\u00a0to the existing RLock.\u00a0Lock file path =\u00a0**`<jsonfile>.lock`**.\n3. Time-out (e.g., 10 s) then raise custom\u00a0**`FileLockTimeoutError`**; caller should retry or alert.\n4. Add smoke test: spawn two\u00a0**`multiprocessing.Process`**\u00a0objects that hammer\u00a0**`.add_item`**; assert no JSON corruption.\n\nAcceptance: Concurrency test passes; manual ctrl-C leaves **`.lock`** cleaned up.",
+    "status": "open",
+    "id": "977b4250-4360-4f55-9bf8-2bc9bedcd897",
+    "type": "micro",
+    "created_at": "2025-06-21T23:48:17.394698"
+  },
+  {
+    "title": "TASK-7 LLMClient stub mode",
+    "description": "Title: Graceful LLMClient fallback when env is missing\nGoal: Allow offline/CI runs without exporting OPENAI_API_KEY.\nImplementation Steps:\n\n1. In\u00a0**`LLMClient.__init__`**, if api_key is missing:\u00a0\u2013 log a\u00a0**warning**;\u00a0\u2013 enter \u201cstub-mode\u201d:\u00a0**`.call()`**\u00a0and\u00a0**`.acall()`**\u00a0return a canned message (e.g.,\u00a0**`\"LLM unavailable\"`**).\n2. Add\u00a0**`self.stub = True`**\u00a0flag; tests can assert behaviour.\n3. Update existing CI tests to expect stub-mode (they already monkey-patch OpenAI).\n\nAcceptance: Running orchestrator without the env var no longer crashes; warning is emitted exactly once per process.",
+    "status": "open",
+    "id": "67b8abd4-c51b-4c6b-a191-ae0c44bea123",
+    "type": "micro",
+    "created_at": "2025-06-21T23:48:17.394912"
   }
 ]
