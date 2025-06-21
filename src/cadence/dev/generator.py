@@ -8,11 +8,8 @@ Single Responsibility: Propose/generate well-formed tasks, optionally from templ
 Never applies code or diffs. Future extensible to LLM/human agent.
 """
 
-import os
-import json
-import uuid
+import os, json, uuid, datetime, warnings
 from typing import List, Dict, Optional
-import datetime
 
 class TaskTemplateError(Exception):
     """Raised if template file is not valid or incomplete."""
@@ -20,15 +17,28 @@ class TaskTemplateError(Exception):
 
 REQUIRED_FIELDS = ("title", "type", "status", "created_at")
 
+
 class TaskGenerator:
-    def __init__(self, template_file: str = None):
+    def __init__(self, template_file: str | None = None, *, strict: bool = False):
         """
-        Optionally specify a JSON (or Markdown with JSON front-matter) template file.
+        Optionally supply a JSON / MD template file.  
+        If `strict` is False (default) and the file does **not** exist, we
+        continue with an empty template dictionary and merely warn.
         """
         self.template_file = template_file
-        self._template_cache = None
+        self._template_cache: Dict = {}
         if template_file:
-            self._template_cache = self._load_template(template_file)
+            if os.path.exists(template_file):
+                self._template_cache = self._load_template(template_file)
+            elif strict:
+                # Original behaviour – hard-fail
+                raise TaskTemplateError(f"Template file not found: {template_file}")
+            else:
+                warnings.warn(
+                    f"Template file '{template_file}' not found; "
+                    "proceeding with minimal fallback templates.",
+                    RuntimeWarning,
+                )
     
     def generate_tasks(self, mode: str = "micro", count: int = 1, human_prompt: Optional[str]=None) -> List[Dict]:
         """
