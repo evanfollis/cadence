@@ -14,6 +14,7 @@ import json
 import threading
 import copy
 from typing import List, Dict, Optional
+from datetime import datetime, UTC
 
 class TaskRecordError(Exception):
     """Custom error for task record issues."""
@@ -120,8 +121,7 @@ class TaskRecord:
         self._idmap = {rec["task_id"]: rec for rec in self._records}
 
     def _now(self):
-        from datetime import datetime
-        return datetime.utcnow().isoformat()
+        return datetime.now(UTC).isoformat()
 
 # Example CLI/sanity use (not for prod)
 if __name__ == "__main__":

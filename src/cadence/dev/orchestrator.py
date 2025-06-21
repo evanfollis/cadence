@@ -158,9 +158,14 @@ class DevOrchestrator:
 
             # 8. Mark task done in backlog and archive
             self.backlog.update_item(task["id"], {"status": "done"})
-            task = self.backlog.get_item(task["id"])    # refresh
+            task = self.backlog.get_item(task["id"])
+            # Mark task done in backlog and archive
+            self.backlog.update_item(task["id"], {"status": "done"})
+            task = self.backlog.get_item(task["id"])
+            self._record(task, "status_done")
+            # Archive all completed tasks and record again
             self.backlog.archive_completed()
-            task = self.backlog.get_item(task["id"])    # status == archived
+            task = self.backlog.get_item(task["id"])
             self._record(task, "archived")
             print("[✔] Task marked done and archived.")
 
