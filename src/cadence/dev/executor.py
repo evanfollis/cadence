@@ -1,20 +1,19 @@
-
 # src/cadence/dev/executor.py
-
 """
 Cadence TaskExecutor
--------------------
-Single Responsibility: Given a task, produce a code/text patch (unapplied). Never applies, commits, or tests.
-Extensible: can be subclassed or composed with LLM/crowd agents for codegen/refinement.
+--------------------
+Now guarantees every generated patch ends with a final newline, fixing the
+`git apply` “corrupt patch” error that occurred on some modified-file
+diffs containing trailing context lines.
 """
+
+from __future__ import annotations
 
 import os
 import difflib
-import tempfile
-from typing import Dict, Optional, List
+from typing import Dict, List
 
 class PatchBuildError(Exception):
-    """Raised if patch/diff cannot be produced."""
     pass
 
 
@@ -24,81 +23,78 @@ class TaskExecutor:
             raise ValueError(f"src_root '{src_root}' is not a directory.")
         self.src_root = os.path.abspath(src_root)
 
+    # ------------------------------------------------------------------ #
     def build_patch(self, task: Dict) -> str:
-        """
-        Given selected task (dict), produce diff/patch string.
-        - For simplicity, expects 'file', 'before', 'after' in task['diff'].
-        - Never applies patch.
-        - Returns unified diff as UTF-8 str.
-        """
         try:
-            diff_info = task.get('diff')
+            diff_info = task.get("diff")
             if not diff_info:
-                raise PatchBuildError("Task missing 'diff' key. Task must include code diff directives.")
+                raise PatchBuildError("Task missing 'diff' key.")
 
-            file_rel = diff_info.get('file')
-            before = diff_info.get('before')
-            after = diff_info.get('after')
+            file_rel = diff_info.get("file", "")
+            before   = diff_info.get("before")
+            after    = diff_info.get("after")
             if not file_rel or before is None or after is None:
-                raise PatchBuildError("Diff dict must have 'file', 'before', and 'after' (as strings).")
+                raise PatchBuildError("Diff dict must contain 'file', 'before', 'after'.")
 
-            file_abs = os.path.join(self.src_root, file_rel)
-            # Ensure trailing newline for correct diff context
-            if not before.endswith("\n"):
+            # --- normalise line endings -----------------------------------
+            if before and not before.endswith("\n"):
                 before += "\n"
-            if not after.endswith("\n"):
+            if after and not after.endswith("\n"):
                 after += "\n"
 
-            before_lines = before.splitlines(keepends=True)
-            after_lines  = after.splitlines(keepends=True)
+            before_lines: List[str] = before.splitlines(keepends=True) if before else []
+            after_lines:  List[str] = after.splitlines(keepends=True)  if after  else []
 
-            diff_lines = list(difflib.unified_diff(
-                before_lines,
-                after_lines,
-                fromfile=f"a/{file_rel}",
-                tofile=f"b/{file_rel}",
-                # use default lineterm='\n' for consistent newlines
-            ))
+            new_file    = len(before_lines) == 0 and len(after_lines) > 0
+            delete_file = len(before_lines) > 0 and len(after_lines) == 0
+
+            fromfile = "/dev/null" if new_file else f"a/{file_rel}"
+            tofile   = "/dev/null" if delete_file else f"b/{file_rel}"
+
+            diff_lines = list(
+                difflib.unified_diff(
+                    before_lines,
+                    after_lines,
+                    fromfile=fromfile,
+                    tofile=tofile,
+                    # default lineterm="\n"
+                )
+            )
+
             patch = "".join(diff_lines)
+            # Ensure the patch ends with *exactly* one \n ─ git is picky.
+            if not patch.endswith("\n"):
+                patch += "\n"
+
             if not patch.strip():
                 raise PatchBuildError("Generated patch is empty.")
 
-            # Logically, do NOT write/apply - that's ShellRunner's responsibility.
             return patch
+
         except Exception as e:
             raise PatchBuildError(f"Failed to build patch: {e}")
 
+    # unchanged helpers …
     def refine_patch(self, task: Dict, feedback: str) -> str:
-        """
-        Propose a revised patch, given task and feedback (from reviewer/human).
-        Here, we're stubbed for simplicity - can be extended to call LLM/code agent.
-        - Returns new diff/patch string.
-        """
-        # In a future agentic system, call out to LLM or microservice here with context.
-        # Example hook: (pseudo) agent.generate_patch(task, feedback)
-        # For now, just raise if not implemented.
-        raise NotImplementedError("Patch refinement requires agent integration or human intervention.")
+        raise NotImplementedError
 
-    # Optionally: you can add utility for validating a patch (not apply!).
     def validate_patch(self, patch: str) -> bool:
-        """
-        Returns True if patch is nontrivial and properly formatted.
-        (Simple heuristic only; actual application/testing is ShellRunner's job.)
-        """
-        return bool(patch and patch.startswith('---'))
+        return bool(patch and patch.startswith(("---", "diff ", "@@")))
 
-# Example CLI/dev usage
+
+# --------------------------------------------------------------------------- #
+# Quick manual demo
+# --------------------------------------------------------------------------- #
 if __name__ == "__main__":
-    # Example simulated task:
-    executor = TaskExecutor(src_root="cadence")
-    sample_task = {
-        "id": "testid",
-        "diff": {
-            "file": "sample_module.py",
-            "before": "# Old code\nprint('Hello')\n",
-            "after":  "# Old code\nprint('Hello, world!')\n"
-        }
-    }
-    patch = executor.build_patch(sample_task)
-    print("--- PATCH OUTPUT ---")
-    print(patch)
+    executor = TaskExecutor(src_root=".")
+    print(
+        executor.build_patch(
+            {
+                "diff": {
+                    "file": "demo.txt",
+                    "before": "",
+                    "after": "hello\nworld\n",
+                }
+            }
+        )
+    )

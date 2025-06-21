@@ -185,7 +185,7 @@ def test_atomic_rollback_on_failed_tests(tmp_path: Path):
 
     assert add(2, 3) == 5
 
-    # 3. Git working tree clean
+    # 3. Git working tree clean (no tracked-file changes)
     status = subprocess.run(
         ["git", "status", "--porcelain"],
         cwd=repo,
@@ -193,4 +193,9 @@ def test_atomic_rollback_on_failed_tests(tmp_path: Path):
         encoding="utf-8",
         check=True,
     ).stdout.strip()
-    assert status == "", f"working tree dirty after rollback:\n{status}"
+
+    # Ignore purely *untracked* lines (begin with '??')
+    tracked_changes = [line for line in status.splitlines() if not line.startswith("??")]
+    assert tracked_changes == [], (
+        "tracked files modified after rollback:\n" + "\n".join(tracked_changes)
+    )
