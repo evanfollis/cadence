@@ -117,13 +117,27 @@ class LLMClient:
         response = self._sync_client.chat.completions.create(  # type: ignore[arg-type]
             model=used_model,
             messages=cast(List[ChatCompletionMessageParam], msgs),
-            response_format={"type": "json_object"} if json_mode else None,  
+            # Never send response_format if we are already in tool-call mode
+            response_format=None if function_spec else (
+                {"type": "json_object"} if json_mode else None
+            ),
             tools=tools_arg,
             tool_choice=tool_choice_arg,
             **kwargs,
         )
 
-        content = (response.choices[0].message.content or "").strip()
+        # ------------------------------------------------------------ #
+        # OpenAI mutually-excludes  “tools=…”   and   “response_format”.
+        # If we supplied  tools=function_spec, the assistant returns
+        # the result in   message.tool_calls[0].function.arguments
+        # and leaves   message.content == None.
+        # ------------------------------------------------------------ #
+        if response.choices[0].message.content is None and response.choices[0].message.tool_calls:
+            # We requested exactly ONE function; grab its arguments.
+            content = response.choices[0].message.tool_calls[0].function.arguments
+        else:
+            content = (response.choices[0].message.content or "").strip()
+
         logger.info(
             "LLM call %s → %.2fs  prompt≈%d  completion≈%d",
             used_model,
@@ -172,12 +186,27 @@ class LLMClient:
         response = await self._async_client.chat.completions.create(  # type: ignore[arg-type]
             model=used_model,
             messages=cast(List[ChatCompletionMessageParam], msgs),
-            response_format={"type": "json_object"} if json_mode else None,  
+            # Never send response_format if we are already in tool-call mode
+            response_format=None if function_spec else (
+                {"type": "json_object"} if json_mode else None
+            ),
             tools=tools_arg,
             tool_choice=tool_choice_arg,
             **kwargs,
         )
-        content = (response.choices[0].message.content or "").strip()
+
+        # ------------------------------------------------------------ #
+        # OpenAI mutually-excludes  “tools=…”   and   “response_format”.
+        # If we supplied  tools=function_spec, the assistant returns
+        # the result in   message.tool_calls[0].function.arguments
+        # and leaves   message.content == None.
+        # ------------------------------------------------------------ #
+        if response.choices[0].message.content is None and response.choices[0].message.tool_calls:
+            # We requested exactly ONE function; grab its arguments.
+            content = response.choices[0].message.tool_calls[0].function.arguments
+        else:
+            content = (response.choices[0].message.content or "").strip()
+
         logger.info(
             "LLM call %s → %.2fs  prompt≈%d  completion≈%d",
             used_model,

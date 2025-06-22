@@ -37,13 +37,16 @@ class LLMJsonCaller:
 
     # ------------------------------------------------------------------ #
     def ask(self, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
+        # Off-line / CI guard – bail out immediately
+        if getattr(self.llm, "stub", False):
+            raise RuntimeError("LLM unavailable — stub-mode")
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
 
         for attempt in range(1, _MAX_RETRIES + 1):
-            raw = self.llm.call(
+            resp = self.llm.call(
                 messages,
                 model=self.model,
                 json_mode=True,
@@ -51,13 +54,23 @@ class LLMJsonCaller:
             )
 
             try:
-                obj = _parse_json(raw)
+                # resp may be str *or* dict (when tool-call path chosen)
+                obj = resp if isinstance(resp, dict) else _parse_json(resp)
                 obj = _normalise_legacy(obj)
                 jsonschema.validate(obj, self.schema)
                 return obj
+            
             except Exception as exc:  # noqa: BLE001
                 logger.warning("JSON validation failed (%d/%d): %s", attempt, _MAX_RETRIES, exc)
-                messages.append({"role": "assistant", "content": raw[:4000]})
+                messages.append({"role": "assistant", "content": obj[:4000]})
+                logger.warning(
+                    "JSON validation failed (%d/%d): %s",
+                    attempt, _MAX_RETRIES, exc,
+                )
+                # Keep transcript short but reproducible
+                messages.append(
+                    {"role": "assistant", "content": (str(resp)[:4000])}
+                )
                 messages.append(
                     {
                         "role": "user",

@@ -24,13 +24,13 @@ _SYSTEM_CONTEXT = textwrap.dedent(
     f"""
     ----------  PROJECT CONTEXT (truncated) ----------
     ## Docs
-    {json.dumps(DOCS, separators=(",", ":"), ensure_ascii=False)[:20000]}
+    {json.dumps(DOCS, separators=(",", ":"), ensure_ascii=False)[:100000]}
 
     ## Module summaries
-    {json.dumps(MODULES, separators=(",", ":"), ensure_ascii=False)[:20000]}
+    {json.dumps(MODULES, separators=(",", ":"), ensure_ascii=False)[:100000]}
 
     ## Source snapshot
-    {json.dumps(CODE_SNAP, separators=(",", ":"), ensure_ascii=False)[:20000]}
+    {json.dumps(CODE_SNAP, separators=(",", ":"), ensure_ascii=False)[:100000]}
     --------------------------------------------------
     """
 ).strip()
