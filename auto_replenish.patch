@@ -1,0 +1,137 @@
+diff --git a/src/cadence/dev/orchestrator.py b/src/cadence/dev/orchestrator.py
+--- a/src/cadence/dev/orchestrator.py
++++ b/src/cadence/dev/orchestrator.py
+@@
+-from .record import TaskRecord, TaskRecordError
+-import sys
+-from typing import Any, Dict
++from .record import TaskRecord, TaskRecordError
++import sys
++from typing import Any, Dict, Optional
+@@
+         self.reviewer = TaskReviewer(config.get("ruleset_file"))
++        # How many micro-tasks to auto-generate when backlog becomes empty
++        self.backlog_autoreplenish_count: int = config.get(
++            "backlog_autoreplenish_count", 3
++        )
++
++    # ------------------------------------------------------------------ #
++    # Back-log auto-replenishment
++    # ------------------------------------------------------------------ #
++    def _ensure_backlog(self, count: Optional[int] = None) -> None:
++        """
++        Generate *count* micro-tasks (default: self.backlog_autoreplenish_count)
++        whenever the open backlog is empty.  Saves an audit snapshot
++        state = ``backlog_replenished``.
++        """
++        if self.backlog.list_items("open"):
++            return  # nothing to do
++
++        n = count if count is not None else self.backlog_autoreplenish_count
++        new_tasks = self.generator.generate_tasks(mode="micro", count=n)
++        for t in new_tasks:
++            self.backlog.add_item(t)
++
++        self._record(
++            {"id": "auto-backlog-replenish", "title": "Auto-replenish"},
++            state="backlog_replenished",
++            extra={"count": n},
++        )
+@@
+-        """
+-        End-to-end flow for ONE micro-task with auto-rollback on failure.
+-        """
+-        rollback_patch: str | None = None
++        """
++        End-to-end flow for ONE micro-task with auto-rollback on failure.
++        """
++        # Make sure we always have something to work on
++        self._ensure_backlog()
++
++        rollback_patch: str | None = None
+@@
+-    parser.add_argument("command", nargs="?", help="show|start|evaluate|done")
+-    parser.add_argument("--id", default=None, help="Task id to use")
++    parser.add_argument("command", nargs="?", help="show|start|evaluate|done")
++    parser.add_argument("--id", default=None, help="Task id to use")
++    parser.add_argument(
++        "--backlog-autoreplenish-count",
++        type=int,
++        default=3,
++        help="Number of micro-tasks to auto-generate when backlog is empty.",
++    )
+@@
+-    orch.cli_entry(args.command or "show", id=args.id)
++    orch.backlog_autoreplenish_count = args.backlog_autoreplenish_count
++    orch.cli_entry(args.command or "show", id=args.id)
+diff --git a/tests/test_orchestrator_auto_replenishment.py b/tests/test_orchestrator_auto_replenishment.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_orchestrator_auto_replenishment.py
++"""
++Smoke-test for DevOrchestrator._ensure_backlog()
++"""
++
++from __future__ import annotations
++
++import pytest
++
++
++class _DummyBacklog:
++    def __init__(self):
++        self.items = []
++
++    def list_items(self, status="open"):
++        return [t for t in self.items if t.get("status") == status]
++
++    def add_item(self, task):
++        self.items.append(dict(task))
++
++
++class _DummyGenerator:
++    def __init__(self):
++        self.calls = []
++
++    def generate_tasks(self, mode: str, count: int):
++        assert mode == "micro"
++        self.calls.append(count)
++        return [
++            {
++                "id": f"gen-{i}",
++                "title": f"auto-task {i}",
++                "type": "micro",
++                "status": "open",
++                "created_at": "now",
++            }
++            for i in range(count)
++        ]
++
++
++class _DummyRecord:
++    def __init__(self):
++        self.snapshots = []
++
++    def save(self, task, state, extra=None):
++        self.snapshots.append(state)
++
++
++@pytest.mark.parametrize("count", [1, 4])
++def test_ensure_backlog(count):
++    from src.cadence.dev.orchestrator import DevOrchestrator
++
++    orch = DevOrchestrator.__new__(DevOrchestrator)  # bypass __init__
++    orch.backlog = _DummyBacklog()
++    orch.generator = _DummyGenerator()
++    orch.record = _DummyRecord()
++    orch.backlog_autoreplenish_count = count
++    orch._record = orch.record.save  # monkey-patch
++
++    # first call should populate
++    orch._ensure_backlog()
++    assert len(orch.backlog.list_items("open")) == count
++    assert "backlog_replenished" in orch.record.snapshots
++
++    # second call must be a no-op
++    orch.record.snapshots.clear()
++    orch._ensure_backlog()
++    assert orch.record.snapshots == []

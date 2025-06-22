@@ -14,12 +14,14 @@ src/cadence/agents/registry.py
 src/cadence/agents/sidekick.py
 src/cadence/context/__init__.py
 src/cadence/context/provider.py
+src/cadence/context/select.py
 src/cadence/dev/__init__.py
 src/cadence/dev/backlog.py
 src/cadence/dev/command_center.py
 src/cadence/dev/executor.py
 src/cadence/dev/generator.py
 src/cadence/dev/orchestrator.py
+src/cadence/dev/phase_guard.py
 src/cadence/dev/record.py
 src/cadence/dev/reviewer.py
 src/cadence/dev/shell.py
@@ -28,4 +30,8 @@ src/cadence/llm/client.py
 src/cadence/utils/add.py
 src/cadence/utils/mvp_loop.py
 tests/test_add.py
+tests/test_concurrency_locking.py
+tests/test_failed_rollback.py
+tests/test_phase_ordering_and_precheck.py
+tests/test_shell_failure_persistence.py
 tests/test_state_recording.py

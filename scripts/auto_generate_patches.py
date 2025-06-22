@@ -33,11 +33,18 @@ MODULES_JSON = Path("agent_context/module_contexts.json")
 # --------------------------------------------------------------------- #
 # Rich system-prompt (≈30 k tokens once!)
 # --------------------------------------------------------------------- #
-base_prompt = (
-    PROMPT_TPL.read_text()
-    if PROMPT_TPL.exists()
-    else "You are Cadence ExecutionAgent.  Produce git-apply-able unified diffs."
-)
+if PROMPT_TPL.exists():
+    base_prompt = PROMPT_TPL.read_text()
+    with open(DOCS_JSON, "r", encoding="utf8") as f:
+        with open(CODE_JSON, "r", encoding="utf8") as g:
+            with open(MODULES_JSON, "r", encoding="utf8") as h:
+                base_prompt = base_prompt.format(
+                    docs=json.load(f),
+                    codebase=json.load(g),
+                    contexts=json.load(h)
+                )
+else:
+    base_prompt = "You are Cadence ExecutionAgent.  Produce git-apply-able unified diffs."
 
 def _make_agent():
     # Each task gets a fresh ExecutionAgent with the same big prompt
