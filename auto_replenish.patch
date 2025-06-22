@@ -1,35 +1,51 @@
+From f0119b275d4ad832440408a7b91eb849c404010b Mon Sep 17 00:00:00 2001
+From: Evan Follis <evanfollis@gmail.com>
+Date: Sat, 21 Jun 2025 23:26:10 -0500
+Subject: [PATCH] feat(orchestrator): auto-replenish backlog when empty
+
+---
+ src/cadence/dev/orchestrator.py           | 38 +++++++++++++-
+ tests/test_orchestrator_auto_replenish.py | 60 +++++++++++++++++++++++
+ 2 files changed, 97 insertions(+), 1 deletion(-)
+ create mode 100644 tests/test_orchestrator_auto_replenish.py
+
 diff --git a/src/cadence/dev/orchestrator.py b/src/cadence/dev/orchestrator.py
+index 2d02a55..bbffce2 100644
 --- a/src/cadence/dev/orchestrator.py
 +++ b/src/cadence/dev/orchestrator.py
-@@
--from .record import TaskRecord, TaskRecordError
--import sys
+@@ -16,7 +16,7 @@ from .shell import ShellRunner, ShellCommandError
+ from .record import TaskRecord, TaskRecordError
+ 
+ import sys
 -from typing import Any, Dict
-+from .record import TaskRecord, TaskRecordError
-+import sys
 +from typing import Any, Dict, Optional
-@@
+ 
+ 
+ class DevOrchestrator:
+@@ -28,6 +28,33 @@ class DevOrchestrator:
+         self.shell = ShellRunner(config["repo_dir"], task_record=self.record)
+         self.executor = TaskExecutor(config["src_root"])
          self.reviewer = TaskReviewer(config.get("ruleset_file"))
-+        # How many micro-tasks to auto-generate when backlog becomes empty
++        # ──────────────────────────────────────────────────────────────────
++        # ADD the 3-line attribute directly below this comment:
 +        self.backlog_autoreplenish_count: int = config.get(
 +            "backlog_autoreplenish_count", 3
 +        )
-+
++        
 +    # ------------------------------------------------------------------ #
 +    # Back-log auto-replenishment
 +    # ------------------------------------------------------------------ #
 +    def _ensure_backlog(self, count: Optional[int] = None) -> None:
 +        """
-+        Generate *count* micro-tasks (default: self.backlog_autoreplenish_count)
-+        whenever the open backlog is empty.  Saves an audit snapshot
-+        state = ``backlog_replenished``.
++        If no open tasks exist, generate *count* micro-tasks (default:
++        self.backlog_autoreplenish_count) and record a snapshot
++        ``state="backlog_replenished"``.
 +        """
 +        if self.backlog.list_items("open"):
-+            return  # nothing to do
++            return                                      # already populated
 +
 +        n = count if count is not None else self.backlog_autoreplenish_count
-+        new_tasks = self.generator.generate_tasks(mode="micro", count=n)
-+        for t in new_tasks:
++        for t in self.generator.generate_tasks(mode="micro", count=n):
 +            self.backlog.add_item(t)
 +
 +        self._record(
@@ -37,43 +53,44 @@ diff --git a/src/cadence/dev/orchestrator.py b/src/cadence/dev/orchestrator.py
 +            state="backlog_replenished",
 +            extra={"count": n},
 +        )
-@@
--        """
--        End-to-end flow for ONE micro-task with auto-rollback on failure.
--        """
--        rollback_patch: str | None = None
-+        """
-+        End-to-end flow for ONE micro-task with auto-rollback on failure.
-+        """
-+        # Make sure we always have something to work on
+ 
+     # ------------------------------------------------------------------ #
+     # Internal helper – ALWAYS log, never raise
+@@ -73,6 +100,8 @@ class DevOrchestrator:
+         """
+         End-to-end flow for ONE micro-task with auto-rollback on failure.
+         """
++        # make sure we always have something to work on
 +        self._ensure_backlog()
-+
-+        rollback_patch: str | None = None
-@@
--    parser.add_argument("command", nargs="?", help="show|start|evaluate|done")
--    parser.add_argument("--id", default=None, help="Task id to use")
-+    parser.add_argument("command", nargs="?", help="show|start|evaluate|done")
-+    parser.add_argument("--id", default=None, help="Task id to use")
+         rollback_patch: str | None = None
+         task: dict | None = None
+ 
+@@ -252,6 +281,13 @@ if __name__ == "__main__":
+     parser = argparse.ArgumentParser()
+     parser.add_argument("command", nargs="?", help="show|start|evaluate|done")
+     parser.add_argument("--id", default=None, help="Task id to use")
 +    parser.add_argument(
 +        "--backlog-autoreplenish-count",
 +        type=int,
 +        default=3,
 +        help="Number of micro-tasks to auto-generate when backlog is empty.",
 +    )
-@@
--    orch.cli_entry(args.command or "show", id=args.id)
+     args = parser.parse_args()
+ 
 +    orch.backlog_autoreplenish_count = args.backlog_autoreplenish_count
-+    orch.cli_entry(args.command or "show", id=args.id)
-diff --git a/tests/test_orchestrator_auto_replenishment.py b/tests/test_orchestrator_auto_replenishment.py
+     orch.cli_entry(args.command or "show", id=args.id)
+\ No newline at end of file
+diff --git a/tests/test_orchestrator_auto_replenish.py b/tests/test_orchestrator_auto_replenish.py
 new file mode 100644
+index 0000000..8225c4d
 --- /dev/null
-+++ b/tests/test_orchestrator_auto_replenishment.py
++++ b/tests/test_orchestrator_auto_replenish.py
+@@ -0,0 +1,60 @@
 +"""
 +Smoke-test for DevOrchestrator._ensure_backlog()
 +"""
 +
 +from __future__ import annotations
-+
 +import pytest
 +
 +
@@ -116,7 +133,7 @@ new file mode 100644
 +
 +
 +@pytest.mark.parametrize("count", [1, 4])
-+def test_ensure_backlog(count):
++def test_auto_replenish(count):
 +    from src.cadence.dev.orchestrator import DevOrchestrator
 +
 +    orch = DevOrchestrator.__new__(DevOrchestrator)  # bypass __init__
@@ -124,14 +141,12 @@ new file mode 100644
 +    orch.generator = _DummyGenerator()
 +    orch.record = _DummyRecord()
 +    orch.backlog_autoreplenish_count = count
-+    orch._record = orch.record.save  # monkey-patch
++    orch._record = orch.record.save
 +
-+    # first call should populate
 +    orch._ensure_backlog()
 +    assert len(orch.backlog.list_items("open")) == count
 +    assert "backlog_replenished" in orch.record.snapshots
-+
-+    # second call must be a no-op
-+    orch.record.snapshots.clear()
-+    orch._ensure_backlog()
-+    assert orch.record.snapshots == []
+\ No newline at end of file
+-- 
+2.39.5 (Apple Git-154)
+

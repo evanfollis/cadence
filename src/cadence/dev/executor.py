@@ -1,104 +1,117 @@
 # src/cadence/dev/executor.py
 """
 Cadence TaskExecutor
---------------------
-Now guarantees every generated patch ends with a final newline, fixing the
-`git apply` “corrupt patch” error that occurred on some modified-file
-diffs containing trailing context lines.
+
+Now consumes *structured* ChangeSets in addition to raw diffs.  Priority:
+
+    1. task["patch"]         – already-built diff (legacy)
+    2. task["change_set"]    – **new preferred path**
+    3. task["diff"]          – legacy before/after dict (kept for tests)
+
+The method still returns a unified diff string so downstream ShellRunner /
+Reviewer require **zero** changes.
 """
 
 from __future__ import annotations
 
-import os
+from pathlib import Path
+from typing import Dict, List, Any, Optional
 import difflib
-from typing import Dict, List
+import os
 
-class PatchBuildError(Exception):
-    pass
+from .change_set import ChangeSet
+from .patch_builder import build_patch, PatchBuildError
+
+
+class TaskExecutorError(RuntimeError):
+    """Generic executor failure."""
 
 
 class TaskExecutor:
-    def __init__(self, src_root: str):
-        if not os.path.isdir(src_root):
+    def __init__(self, src_root: str | Path):
+        self.src_root = Path(src_root).resolve()
+        if not self.src_root.is_dir():
             raise ValueError(f"src_root '{src_root}' is not a directory.")
-        self.src_root = os.path.abspath(src_root)
 
     # ------------------------------------------------------------------ #
-    def build_patch(self, task: Dict) -> str:
-        # >>> NEW: accept a pre-computed raw patch <<<
-        raw = task.get("patch")
-        if isinstance(raw, str) and raw.strip():
-            return raw.strip() + ("\n" if not raw.endswith("\n") else "")
+    # Public
+    # ------------------------------------------------------------------ #
+    def build_patch(self, task: Dict[str, Any]) -> str:
+        """
+        Return a unified diff string ready for `git apply`.
+
+        Accepted task keys (checked in this order):
+
+        • "patch"       – already-made diff → returned unchanged.
+        • "change_set"  – new structured format → converted via PatchBuilder.
+        • "diff"        – legacy single-file before/after dict.
+
+        Raises TaskExecutorError (wrapper) on failure so orchestrator callers
+        don’t have to know about PatchBuildError vs ValueError, etc.
+        """
         try:
-            diff_info = task.get("diff")
-            if not diff_info:
-                raise PatchBuildError("Task missing 'diff' key.")
+            # 1. already-built patch supplied?  --------------------------------
+            raw = task.get("patch")
+            if isinstance(raw, str) and raw.strip():
+                return raw if raw.endswith("\n") else raw + "\n"
 
-            file_rel = diff_info.get("file", "")
-            before   = diff_info.get("before")
-            after    = diff_info.get("after")
-            if not file_rel or before is None or after is None:
-                raise PatchBuildError("Diff dict must contain 'file', 'before', 'after'.")
+            # 2. new ChangeSet path  ------------------------------------------
+            if "change_set" in task:
+                cs_obj = ChangeSet.from_dict(task["change_set"])
+                return build_patch(cs_obj, self.src_root)
 
-            # --- normalise line endings -----------------------------------
-            if before and not before.endswith("\n"):
-                before += "\n"
-            if after and not after.endswith("\n"):
-                after += "\n"
+            # 3. legacy single-file diff dict  --------------------------------
+            return self._build_one_file_diff(task)
 
-            before_lines: List[str] = before.splitlines(keepends=True) if before else []
-            after_lines:  List[str] = after.splitlines(keepends=True)  if after  else []
+        except PatchBuildError as exc:
+            raise TaskExecutorError(str(exc)) from exc
+        except Exception as exc:
+            raise TaskExecutorError(f"Failed to build patch: {exc}") from exc
 
-            new_file    = len(before_lines) == 0 and len(after_lines) > 0
-            delete_file = len(before_lines) > 0 and len(after_lines) == 0
-
-            fromfile = "/dev/null" if new_file else f"a/{file_rel}"
-            tofile   = "/dev/null" if delete_file else f"b/{file_rel}"
-
-            diff_lines = list(
-                difflib.unified_diff(
-                    before_lines,
-                    after_lines,
-                    fromfile=fromfile,
-                    tofile=tofile,
-                    # default lineterm="\n"
-                )
+    # ------------------------------------------------------------------ #
+    # Legacy helper – keep old diff path working
+    # ------------------------------------------------------------------ #
+    def _build_one_file_diff(self, task: Dict[str, Any]) -> str:
+        diff_info = task.get("diff")
+        if not diff_info:
+            raise TaskExecutorError(
+                "Task missing 'change_set' or 'diff' or already-built 'patch'."
             )
 
-            patch = "".join(diff_lines)
-            # Ensure the patch ends with *exactly* one \n ─ git is picky.
-            if not patch.endswith("\n"):
-                patch += "\n"
+        file_rel = diff_info.get("file", "")
+        before = diff_info.get("before")
+        after = diff_info.get("after")
 
-            if not patch.strip():
-                raise PatchBuildError("Generated patch is empty.")
+        if not file_rel or before is None or after is None:
+            raise TaskExecutorError(
+                "diff dict must contain 'file', 'before', and 'after'."
+            )
 
-            return patch
+        # --- normalise line endings ------------------------------------- #
+        if before and not before.endswith("\n"):
+            before += "\n"
+        if after and not after.endswith("\n"):
+            after += "\n"
 
-        except Exception as e:
-            raise PatchBuildError(f"Failed to build patch: {e}")
+        before_lines: List[str] = before.splitlines(keepends=True) if before else []
+        after_lines: List[str] = after.splitlines(keepends=True) if after else []
 
-    # unchanged helpers …
-    def refine_patch(self, task: Dict, feedback: str) -> str:
-        raise NotImplementedError
+        new_file = len(before_lines) == 0 and len(after_lines) > 0
+        delete_file = len(before_lines) > 0 and len(after_lines) == 0
 
-    def validate_patch(self, patch: str) -> bool:
-        return bool(patch and patch.startswith(("---", "diff ", "@@")))
+        fromfile = "/dev/null" if new_file else f"a/{file_rel}"
+        tofile = "/dev/null" if delete_file else f"b/{file_rel}"
 
-
-# --------------------------------------------------------------------------- #
-# Quick manual demo
-# --------------------------------------------------------------------------- #
-if __name__ == "__main__":
-    executor = TaskExecutor(src_root=".")
-    print(
-        executor.build_patch(
-            {
-                "diff": {
-                    "file": "demo.txt",
-                    "before": "",
-                    "after": "hello\nworld\n",
-                }
-            }
+        diff_lines = difflib.unified_diff(
+            before_lines,
+            after_lines,
+            fromfile=fromfile,
+            tofile=tofile,
+            lineterm="\n",
         )
-    )
+        patch = "".join(diff_lines)
+        if not patch.strip():
+            raise TaskExecutorError("Generated patch is empty.")
+        if not patch.endswith("\n"):
+            patch += "\n"
+        return patch

@@ -3,3 +3,4 @@ dotenv
 pytest
 mypy
 tiktoken
+filelock
