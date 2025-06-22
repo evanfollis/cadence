@@ -6,6 +6,8 @@ from typing import List, Dict, Any, Optional, cast
 from openai import AsyncOpenAI, OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from dotenv import load_dotenv
+import tiktoken
+import time
 
 # One-time load
 load_dotenv()
@@ -55,6 +57,13 @@ class LLMClient:
         if agent_type and agent_type in _DEFAULT_MODELS:
             return _DEFAULT_MODELS[agent_type]
         return self.default_model
+    
+    def _count_tokens(model: str, messages: List[Dict[str, str]]) -> int:
+        enc = tiktoken.encoding_for_model(model)          # may raise for unknown
+        num = 0
+        for m in messages:
+            num += len(enc.encode(m["role"])) + len(enc.encode(m["content"]))
+        return num
 
     def call(
         self,
@@ -67,10 +76,17 @@ class LLMClient:
     ) -> str:
         used_model = self._resolve_model(model, agent_type)
         msgs = messages.copy()
+
+        prompt_tokens = self._count_tokens(used_model, msgs)
+        t0 = time.perf_counter()
+
         if system_prompt and not any(m.get("role") == "system" for m in msgs):
             msgs.insert(0, {"role": "system", "content": system_prompt})
 
-        logger.info(f"LLM sync call: model={used_model}, msgs_len={len(msgs)}")
+        logger.info(
+            "LLM sync call: model=%s  msgs=%d  prompt_toks≈%d",
+            used_model, len(msgs), prompt_tokens
+        )
         response = self._sync_client.chat.completions.create(  # type: ignore[arg-type]
             model=used_model,
             messages=cast(List[ChatCompletionMessageParam], msgs),
@@ -78,6 +94,8 @@ class LLMClient:
             **kwargs
         )
         content = (response.choices[0].message.content or "").strip()
+        dt = time.perf_counter() - t0
+        logger.info("LLM sync done:  %.2f s  completion≈%d toks", dt, len(content) // 4)
         logger.debug(f"LLM response: {content[:120]}...")
         return content
 
@@ -92,10 +110,15 @@ class LLMClient:
     ) -> str:
         used_model = self._resolve_model(model, agent_type)
         msgs = messages.copy()
+        prompt_tokens = _count_tokens(used_model, msgs)
+        t0 = time.perf_counter()
         if system_prompt and not any(m.get("role") == "system" for m in msgs):
             msgs.insert(0, {"role": "system", "content": system_prompt})
 
-        logger.info(f"LLM async call: model={used_model}, msgs_len={len(msgs)}")
+        logger.info(
+            "LLM async call: model=%s  msgs=%d  prompt_toks≈%d",
+            used_model, len(msgs), prompt_tokens
+        )
         response = await self._async_client.chat.completions.create(  # type: ignore[arg-type]
             model=used_model,
             messages=cast(List[ChatCompletionMessageParam], msgs),
@@ -103,6 +126,8 @@ class LLMClient:
             **kwargs
         )
         content = (response.choices[0].message.content or "").strip()
+        dt = time.perf_counter() - t0
+        logger.info("LLM async done: %.2f s  completion≈%d toks", dt, len(content) // 4)
         logger.debug(f"LLM response: {content[:120]}...")
         return content
 
