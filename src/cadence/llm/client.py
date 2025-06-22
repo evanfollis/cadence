@@ -1,140 +1,184 @@
 # src/cadence/llm/client.py
-import os
-import logging
-import asyncio
+from __future__ import annotations
+
+import os, logging, time
 from typing import List, Dict, Any, Optional, cast
+
 from openai import AsyncOpenAI, OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from dotenv import load_dotenv
 import tiktoken
-import time
 
-# One-time load
+# one-time env expansion
 load_dotenv()
 
-# Set up logger
 logger = logging.getLogger("cadence.llm.client")
 if not logger.handlers:
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(message)s"))
-    logger.addHandler(handler)
+    h = logging.StreamHandler()
+    h.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(message)s"))
+    logger.addHandler(h)
 logger.setLevel(logging.INFO)
 
-# Global default model configs
 _DEFAULT_MODELS = {
     "reasoning": "o3-2025-04-16",
     "execution": "gpt-4.1",
-    "efficiency": "o4-mini"
+    "efficiency": "o4-mini",
 }
 
-def get_env(key: str, required=True, default=None):
-    val = os.getenv(key)
-    if not val and required:
-        raise RuntimeError(f"Environment variable {key} not set.")
-    return val or default
 
 def _count_tokens(model: str, messages: List[Dict[str, str]]) -> int:
     enc = tiktoken.get_encoding("o200k_base")
-    num = 0
-    for m in messages:
-        num += len(enc.encode(m["role"])) + len(enc.encode(m["content"]))
-    return num
+    return sum(len(enc.encode(m["role"])) + len(enc.encode(m["content"])) for m in messages)
 
-# Centralized sync/async LLM client
+
 class LLMClient:
+    """
+    Central sync/async wrapper with:
+
+    • stub-mode when no API key
+    • optional json_mode   → OpenAI “response_format={type:json_object}”
+    • optional function_spec → OpenAI “tools=[…]”
+    """
+
+    _warned_stub = False
+
     def __init__(
         self,
+        *,
         api_key: Optional[str] = None,
         api_base: Optional[str] = None,
         api_version: Optional[str] = None,
         default_model: Optional[str] = None,
     ):
-        self.api_key = api_key or get_env('OPENAI_API_KEY')
-        self.api_base = api_base or os.getenv('OPENAI_API_BASE', None)
-        self.api_version = api_version or os.getenv('OPENAI_API_VERSION', None)
+        key = api_key or os.getenv("OPENAI_API_KEY")
+        self.stub = not bool(key)
+        self.api_key = key
+        self.api_base = api_base or os.getenv("OPENAI_API_BASE")
+        self.api_version = api_version or os.getenv("OPENAI_API_VERSION")
         self.default_model = default_model or _DEFAULT_MODELS["execution"]
 
-        # Sync and Async clients
-        self._async_client = AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
-        self._sync_client = OpenAI(api_key=self.api_key, base_url=self.api_base)
+        if self.stub:
+            if not LLMClient._warned_stub:
+                logger.warning(
+                    "[Cadence] LLMClient stub-mode — OPENAI_API_KEY missing; "
+                    ".call()/ .acall() return canned message."
+                )
+                LLMClient._warned_stub = True
+            self._sync_client = None
+            self._async_client = None
+        else:
+            self._sync_client = OpenAI(api_key=self.api_key, base_url=self.api_base)
+            self._async_client = AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
 
-    def _resolve_model(self, model: Optional[str], agent_type: Optional[str]):
+    # ------------------------------------------------------------------ #
+    def _resolve_model(self, model: Optional[str], agent_type: Optional[str]) -> str:
         if model:
             return model
         if agent_type and agent_type in _DEFAULT_MODELS:
             return _DEFAULT_MODELS[agent_type]
         return self.default_model
 
+    # ------------------------------------------------------------------ #
     def call(
         self,
         messages: List[Dict[str, Any]],
+        *,
         model: Optional[str] = None,
         agent_type: Optional[str] = None,
         system_prompt: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        json_mode: bool = False,
+        function_spec: Optional[List[Dict[str, Any]]] = None,
+        **kwargs,
     ) -> str:
+        if self.stub:
+            return "LLM unavailable — Cadence stub-mode"
+
         used_model = self._resolve_model(model, agent_type)
         msgs = messages.copy()
+        if system_prompt and not any(m.get("role") == "system" for m in msgs):
+            msgs.insert(0, {"role": "system", "content": system_prompt})
 
         prompt_tokens = _count_tokens(used_model, msgs)
         t0 = time.perf_counter()
 
-        if system_prompt and not any(m.get("role") == "system" for m in msgs):
-            msgs.insert(0, {"role": "system", "content": system_prompt})
+        # -- wrap tools if present --------------------------------------
+        tools_arg = None
+        tool_choice_arg = None
+        if function_spec:                     # <─ NEW  (wrap the spec)
+            tools_arg = [{"type": "function", "function": fs} for fs in function_spec]
+            tool_choice_arg = {"type": "function", "name": function_spec[0]["name"]}
 
-        logger.info(
-            "LLM sync call: model=%s  msgs=%d  prompt_toks≈%d",
-            used_model, len(msgs), prompt_tokens
-        )
         response = self._sync_client.chat.completions.create(  # type: ignore[arg-type]
             model=used_model,
             messages=cast(List[ChatCompletionMessageParam], msgs),
-            response_format={"type": "json_object"} if kwargs.pop("json_mode", False) else None,
-            # max_tokens=max_tokens,
-            **kwargs
+            response_format={"type": "json_object"} if json_mode else None,  
+            tools=tools_arg,
+            tool_choice=tool_choice_arg,
+            **kwargs,
         )
+
         content = (response.choices[0].message.content or "").strip()
-        dt = time.perf_counter() - t0
-        logger.info("LLM sync done:  %.2f s  completion≈%d toks", dt, len(content) // 4)
-        logger.debug(f"LLM response: {content[:120]}...")
+        logger.info(
+            "LLM call %s → %.2fs  prompt≈%d  completion≈%d",
+            used_model,
+            time.perf_counter() - t0,
+            prompt_tokens,
+            len(content) // 4,
+        )
         return content
 
+    # async version (rarely used by Cadence core)
     async def acall(
         self,
         messages: List[Dict[str, Any]],
+        *,
         model: Optional[str] = None,
         agent_type: Optional[str] = None,
         system_prompt: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        json_mode: bool = False,
+        function_spec: Optional[List[Dict[str, Any]]] = None,
+        **kwargs,
     ) -> str:
+        if self.stub:
+            return "LLM unavailable — Cadence stub-mode"
+
         used_model = self._resolve_model(model, agent_type)
         msgs = messages.copy()
-        prompt_tokens = _count_tokens(used_model, msgs)
-        t0 = time.perf_counter()
         if system_prompt and not any(m.get("role") == "system" for m in msgs):
             msgs.insert(0, {"role": "system", "content": system_prompt})
 
-        logger.info(
-            "LLM async call: model=%s  msgs=%d  prompt_toks≈%d",
-            used_model, len(msgs), prompt_tokens
-        )
+        prompt_tokens = _count_tokens(used_model, msgs)
+        t0 = time.perf_counter()
+
+        # -- wrap tools if present --------------------------------------
+        tools_arg = None
+        tool_choice_arg = None
+        if function_spec:                     # <─ NEW  (wrap the spec)
+            tools_arg = [{"type": "function", "function": fs} for fs in function_spec]
+            tool_choice_arg = {"type": "function", "name": function_spec[0]["name"]}
+
         response = await self._async_client.chat.completions.create(  # type: ignore[arg-type]
             model=used_model,
             messages=cast(List[ChatCompletionMessageParam], msgs),
-            response_format={"type": "json_object"} if kwargs.pop("json_mode", False) else None,
-            # max_tokens=max_tokens,
-            **kwargs
+            response_format={"type": "json_object"} if json_mode else None,  
+            tools=tools_arg,
+            tool_choice=tool_choice_arg,
+            **kwargs,
         )
         content = (response.choices[0].message.content or "").strip()
-        dt = time.perf_counter() - t0
-        logger.info("LLM async done: %.2f s  completion≈%d toks", dt, len(content) // 4)
-        logger.debug(f"LLM response: {content[:120]}...")
+        logger.info(
+            "LLM call %s → %.2fs  prompt≈%d  completion≈%d",
+            used_model,
+            time.perf_counter() - t0,
+            prompt_tokens,
+            len(content) // 4,
+        )
         return content
 
-# Provide a default client getter for agents
+
+# helper for callers that want the singleton
 def get_default_client() -> LLMClient:
     return _DEFAULT_CLIENT
+
 
 _DEFAULT_CLIENT = LLMClient()
