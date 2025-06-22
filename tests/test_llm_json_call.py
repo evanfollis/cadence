@@ -4,10 +4,9 @@ tests/test_llm_json_call.py
 
 Regression tests for cadence.llm.json_call.LLMJsonCaller
 
-The test-double replaces the global `get_default_client()` so the code
-under test receives our stub instead of a real OpenAI client.  No network
-traffic, no extra wheels required.
+The stubbed client means no real network traffic is made.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,9 +23,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if (PROJECT_ROOT / "src").exists():
     sys.path.insert(0, str(PROJECT_ROOT))
 
-# ------------------------------------------------------------------------- #
-# CUT imports (after we fixed sys.path)
-# ------------------------------------------------------------------------- #
 from cadence.llm.json_call import LLMJsonCaller
 from cadence.dev.schema import CHANGE_SET_V1
 
@@ -55,16 +51,18 @@ class _StubLLM:
     """
     Very small stand-in for cadence.llm.client.LLMClient.
 
-    • responses[i] is returned by the i-th call().
-    • has .stub attribute so LLMJsonCaller’s stub guard works.
+    • pops predefined responses off a queue;
+    • counts how many times .call() is invoked.
     """
 
     def __init__(self, responses: List[Any]):
         self._queue = list(responses)
+        self.call_count = 0
         self.stub = False  # important – LLMJsonCaller checks this
 
     # signature compatible with real .call()
     def call(self, *_a, **_kw):
+        self.call_count += 1
         if not self._queue:
             raise RuntimeError("StubLLM queue exhausted")
         return self._queue.pop(0)
@@ -109,7 +107,7 @@ def test_plain_json_string(_patch_llm):
 def test_tool_call_dict_return(_patch_llm):
     """
     Tool-call path: LLMClient.call() returns the parsed dict directly,
-    so LLMJsonCaller must accept `obj` without trying to json-decode.
+    so LLMJsonCaller must accept the object unchanged.
     """
     payload = _minimal_changeset()
     _patch_llm([payload])  # already-parsed dict
@@ -126,7 +124,7 @@ def test_retry_then_success(_patch_llm, monkeypatch):
     """
     bad = "NOT-JSON"
     good = _minimal_changeset()
-    stub = _patch_llm([bad, json.dumps(good), json.dumps(good)])  # len >= _MAX_RETRIES
+    stub = _patch_llm([bad, json.dumps(good), json.dumps(good)])  # queue len ≥ _MAX_RETRIES
 
     # Skip real waiting during retries
     import time
@@ -136,4 +134,7 @@ def test_retry_then_success(_patch_llm, monkeypatch):
     caller = LLMJsonCaller(schema=CHANGE_SET_V1)
     obj = caller.ask("sys", "usr")
     assert obj == good
-    assert not stub._queue  # all queued responses consumed
+
+    # One bad + one good response must have been consumed
+    assert stub.call_count == 2
+    assert len(stub._queue) == 1

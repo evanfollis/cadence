@@ -1,15 +1,19 @@
 # src/cadence/llm/json_call.py
 """
 LLMJsonCaller – ask the model for strictly-typed JSON via function-calling.
-Retries automatically on validation failure, optionally normalises legacy
-shapes.
+Retries automatically on validation failure and normalises legacy shapes.
 """
 
 from __future__ import annotations
-import json, logging, time, re
-from typing import Any, Dict, List
+
+import json
+import logging
+import re
+import time
+from typing import Any, Dict
 
 import jsonschema
+
 from cadence.llm.client import get_default_client
 from cadence.dev.schema import CHANGE_SET_V1
 
@@ -40,6 +44,7 @@ class LLMJsonCaller:
         # Off-line / CI guard – bail out immediately
         if getattr(self.llm, "stub", False):
             raise RuntimeError("LLM unavailable — stub-mode")
+
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -59,22 +64,26 @@ class LLMJsonCaller:
                 obj = _normalise_legacy(obj)
                 jsonschema.validate(obj, self.schema)
                 return obj
-            
+
             except Exception as exc:  # noqa: BLE001
-                logger.warning("JSON validation failed (%d/%d): %s", attempt, _MAX_RETRIES, exc)
-                messages.append({"role": "assistant", "content": obj[:4000]})
                 logger.warning(
-                    "JSON validation failed (%d/%d): %s",
-                    attempt, _MAX_RETRIES, exc,
+                    "JSON validation failed (%d/%d): %s", attempt, _MAX_RETRIES, exc
                 )
-                # Keep transcript short but reproducible
-                messages.append(
-                    {"role": "assistant", "content": (str(resp)[:4000])}
-                )
+
+                # When parsing/validation fails, fall back to the raw response
+                assistant_output = (
+                    resp if isinstance(resp, str) else json.dumps(resp)
+                )[:4000]
+
+                # Inject the invalid output so the model can self-correct
+                messages.append({"role": "assistant", "content": assistant_output})
                 messages.append(
                     {
                         "role": "user",
-                        "content": "The object is invalid. Return ONLY a corrected JSON object.",
+                        "content": (
+                            "The JSON object is invalid. "
+                            "Return ONLY a corrected JSON object."
+                        ),
                     }
                 )
                 time.sleep(1)
@@ -88,10 +97,10 @@ class LLMJsonCaller:
 def _parse_json(text: str) -> Dict[str, Any]:
     """
     If OpenAI response_format works, `text` is already pure JSON.
-    Guard for accidental fencing.
+    Guard against accidental fencing.
     """
     if text.strip().startswith("```"):
-        m = re.search(r"```json\\s*([\\s\\S]*?)```", text, re.I)
+        m = re.search(r"```json\s*([\s\S]*?)```", text, re.I)
         if not m:
             raise ValueError("Could not locate fenced JSON block")
         text = m.group(1)

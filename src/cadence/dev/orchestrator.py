@@ -10,13 +10,14 @@ from __future__ import annotations
 
 from .backlog import BacklogManager
 from .generator import TaskGenerator
-from .executor import TaskExecutor, PatchBuildError
+from .executor import TaskExecutor, PatchBuildError, TaskExecutorError
 from .reviewer import TaskReviewer
 from .shell import ShellRunner, ShellCommandError
 from .record import TaskRecord, TaskRecordError
 
 import sys
 from typing import Any, Dict, Optional
+import tabulate
 
 
 class DevOrchestrator:
@@ -135,7 +136,7 @@ class DevOrchestrator:
                 rollback_patch = patch
                 self._record(task, "patch_built", {"patch": patch})
                 print("--- Patch built ---\n", patch)
-            except PatchBuildError as ex:
+            except (PatchBuildError, TaskExecutorError) as ex:
                 self._record(task, "failed_build_patch", {"error": str(ex)})
                 print(f"[X] Patch build failed: {ex}")
                 return {"success": False, "stage": "build_patch", "error": str(ex)}
