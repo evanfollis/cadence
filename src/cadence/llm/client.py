@@ -104,9 +104,15 @@ class LLMClient:
         # -- wrap tools if present --------------------------------------
         tools_arg = None
         tool_choice_arg = None
-        if function_spec:                     # <─ NEW  (wrap the spec)
-            tools_arg = [{"type": "function", "function": fs} for fs in function_spec]
-            tool_choice_arg = {"type": "function", "name": function_spec[0]["name"]}
+        if function_spec:
+            tools_arg = [{"type": "function", "function": fs}
+                         for fs in function_spec]
+            tool_choice_arg = {
+                "type": "function",
+                "function": {               # <- nest correctly
+                    "name": function_spec[0]["name"]
+                }
+            }
 
         response = self._sync_client.chat.completions.create(  # type: ignore[arg-type]
             model=used_model,
@@ -153,9 +159,15 @@ class LLMClient:
         # -- wrap tools if present --------------------------------------
         tools_arg = None
         tool_choice_arg = None
-        if function_spec:                     # <─ NEW  (wrap the spec)
-            tools_arg = [{"type": "function", "function": fs} for fs in function_spec]
-            tool_choice_arg = {"type": "function", "name": function_spec[0]["name"]}
+        if function_spec:
+            tools_arg = [{"type": "function", "function": fs}
+                         for fs in function_spec]
+            tool_choice_arg = {
+                "type": "function",
+                "function": {               # <- nest correctly
+                    "name": function_spec[0]["name"]
+                }
+            }
 
         response = await self._async_client.chat.completions.create(  # type: ignore[arg-type]
             model=used_model,
