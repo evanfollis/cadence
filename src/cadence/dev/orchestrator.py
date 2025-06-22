@@ -16,7 +16,7 @@ from .shell import ShellRunner, ShellCommandError
 from .record import TaskRecord, TaskRecordError
 
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 class DevOrchestrator:
@@ -28,6 +28,33 @@ class DevOrchestrator:
         self.shell = ShellRunner(config["repo_dir"], task_record=self.record)
         self.executor = TaskExecutor(config["src_root"])
         self.reviewer = TaskReviewer(config.get("ruleset_file"))
+        # ──────────────────────────────────────────────────────────────────
+        # ADD the 3-line attribute directly below this comment:
+        self.backlog_autoreplenish_count: int = config.get(
+            "backlog_autoreplenish_count", 3
+        )
+        
+    # ------------------------------------------------------------------ #
+    # Back-log auto-replenishment
+    # ------------------------------------------------------------------ #
+    def _ensure_backlog(self, count: Optional[int] = None) -> None:
+        """
+        If no open tasks exist, generate *count* micro-tasks (default:
+        self.backlog_autoreplenish_count) and record a snapshot
+        ``state="backlog_replenished"``.
+        """
+        if self.backlog.list_items("open"):
+            return                                      # already populated
+
+        n = count if count is not None else self.backlog_autoreplenish_count
+        for t in self.generator.generate_tasks(mode="micro", count=n):
+            self.backlog.add_item(t)
+
+        self._record(
+            {"id": "auto-backlog-replenish", "title": "Auto-replenish"},
+            state="backlog_replenished",
+            extra={"count": n},
+        )
 
     # ------------------------------------------------------------------ #
     # Internal helper – ALWAYS log, never raise
@@ -73,6 +100,8 @@ class DevOrchestrator:
         """
         End-to-end flow for ONE micro-task with auto-rollback on failure.
         """
+        # make sure we always have something to work on
+        self._ensure_backlog()
         rollback_patch: str | None = None
         task: dict | None = None
 
@@ -252,6 +281,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("command", nargs="?", help="show|start|evaluate|done")
     parser.add_argument("--id", default=None, help="Task id to use")
+    parser.add_argument(
+        "--backlog-autoreplenish-count",
+        type=int,
+        default=3,
+        help="Number of micro-tasks to auto-generate when backlog is empty.",
+    )
     args = parser.parse_args()
 
+    orch.backlog_autoreplenish_count = args.backlog_autoreplenish_count
     orch.cli_entry(args.command or "show", id=args.id)
