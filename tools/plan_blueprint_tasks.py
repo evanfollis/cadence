@@ -1,57 +1,88 @@
 #!/usr/bin/env python3
 """
-tools/plan_blueprint_tasks.py
+Plan blueprint tasks → micro-tasks with ChangeSet.
 
-Turn high-level blueprint tasks into executable micro-tasks
-that contain `change_set` payloads.
+Reads dev_backlog.json, finds any open task *without* “change_set”, calls the
+LLMJsonCaller defined above to obtain one, validates it, and writes a new
+micro-task back to the backlog.
 """
 
 from __future__ import annotations
-import argparse, json, uuid, datetime, sys
+import argparse, uuid, datetime, json
 from pathlib import Path
 
 from cadence.dev.backlog import BacklogManager
 from cadence.dev.change_set import ChangeSet
-from cadence.agents.registry import get_agent    # NEW
+from cadence.llm.json_call import LLMJsonCaller
 
-def _plan_to_changeset(title: str, description: str) -> ChangeSet:
-    """
-    Ask the ExecutionAgent to return a **ChangeSet JSON block**.
-    The agent prompt can be as sophisticated as you like; the only
-    requirement is that it answers with a fenced ```json block that
-    matches ChangeSet.from_json().
-    """
-    agent = get_agent("execution")                     # Core ExecutionAgent
-    prompt = (
-        "You are Cadence Planner.  Convert the following blueprint task\n"
-        "into a compact ChangeSet JSON.  One ChangeSet must implement the\n"
-        "task completely.  No prose, ONLY a fenced ```json block.\n\n"
-        f"TITLE:\n{title}\n\nDESCRIPTION:\n{description}"
+# tools/plan_blueprint_tasks.py  (top of file)
+
+from pathlib import Path
+import json, textwrap
+
+CTX_DIR = Path("agent_context")
+DOCS      = json.loads((CTX_DIR / "docs.json").read_text())     if (CTX_DIR / "docs.json").exists() else {}
+MODULES   = json.loads((CTX_DIR / "module_contexts.json").read_text()) if (CTX_DIR / "module_contexts.json").exists() else {}
+CODE_SNAP = json.loads((CTX_DIR / "code.json").read_text())     if (CTX_DIR / "code.json").exists() else {}
+
+SYSTEM_PROMPT = textwrap.dedent(f"""
+    You are **Cadence Planner** — a senior engineer inside an autonomous
+    software-delivery platform.  Your job:
+
+      1. Read the blueprint TITLE + DESCRIPTION supplied by the user.
+      2. Inspect the *ground-truth* project context below.
+      3. Produce EXACTLY ONE JSON object that satisfies the
+         Cadence ChangeSet schema (provided implicitly by the function spec).
+
+    ----------  PROJECT CONTEXT  ----------
+    # High-level docs
+    {json.dumps(DOCS, separators=(',', ':'))}
+
+    # Module summaries
+    {json.dumps(MODULES, separators=(',', ':'))}
+
+    # Source snapshot (truncated)
+    {json.dumps(CODE_SNAP, separators=(',', ':'))}
+    ----------  END CONTEXT  ----------
+
+    Output policy:
+      • Use ONLY the JSON format requested by the function spec.
+      • Do NOT wrap the object in Markdown fences.
+      • After you emit the JSON, stop — no commentary.
+""").strip()
+
+
+def _plan(blueprint: dict) -> ChangeSet:
+    caller = LLMJsonCaller()
+    title = blueprint["title"]
+    desc = blueprint.get("description", "")
+
+    user_prompt = (
+        f"Blueprint title:\n{title}\n\n"
+        f"Blueprint description:\n{desc}\n\n"
+        "Return a ChangeSet JSON that implements this task completely."
     )
-    reply = agent.run_interaction(prompt)
-    import re, json
-    m = re.search(r"```json\\s*([\\s\\S]*?)```", reply, re.I)
-    if not m:
-        raise RuntimeError("Agent reply did not contain a JSON block.")
 
-    cs = ChangeSet.from_dict(json.loads(m.group(1)))
-    return cs
+    obj = caller.ask(SYSTEM_PROMPT, user_prompt)
+    return ChangeSet.from_dict(obj)
 
-# ------------------------------------------------------------------ #
-def main() -> None:
-    p = argparse.ArgumentParser()
-    p.add_argument("--backlog", default="dev_backlog.json")
-    args = p.parse_args()
 
-    bm = BacklogManager(args.backlog)
+# ---------------------------------------------------------------------- #
+def ingest_blueprints(backlog_path: Path) -> None:
+    bm = BacklogManager(backlog_path.as_posix())
     blueprints = [t for t in bm.list_items("open") if "change_set" not in t]
 
     if not blueprints:
-        print("No blueprint tasks without change_set — nothing to do.")
+        print("No blueprint tasks pending.")
         return
 
     for bp in blueprints:
-        cs = _plan_to_changeset(bp["title"], bp.get("description", ""))
+        try:
+            cs = _plan(bp)
+        except Exception as exc:   # noqa: BLE001
+            print(f"[FAIL] {bp['title']}: {exc}")
+            continue
+
         micro = {
             "id": str(uuid.uuid4()),
             "title": bp["title"],
@@ -62,13 +93,20 @@ def main() -> None:
             "parent_id": bp["id"],
         }
         bm.add_item(micro)
-        print(f"[OK] seeded micro-task {micro['id'][:8]} for “{bp['title']}”")
-
-        # mark the blueprint as done/archived so it won't be reprocessed
         bm.update_item(bp["id"], {"status": "archived"})
+        print(f"[OK] micro-task {micro['id'][:8]} created for {bp['title']}")
 
-    print("Backlog after planning:")
+    print("-- backlog snapshot --")
     print(bm)
 
-if __name__ == "__main__":
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--backlog", default="dev_backlog.json")
+    args = ap.parse_args()
+
+    ingest_blueprints(Path(args.backlog))
+
+
+if __name__ == "__main__":  # pragma: no cover
     main()

@@ -90,6 +90,7 @@ class LLMClient:
         response = self._sync_client.chat.completions.create(  # type: ignore[arg-type]
             model=used_model,
             messages=cast(List[ChatCompletionMessageParam], msgs),
+            response_format={"type": "json_object"} if kwargs.pop("json_mode", False) else None,
             # max_tokens=max_tokens,
             **kwargs
         )
@@ -122,7 +123,8 @@ class LLMClient:
         response = await self._async_client.chat.completions.create(  # type: ignore[arg-type]
             model=used_model,
             messages=cast(List[ChatCompletionMessageParam], msgs),
-            max_tokens=max_tokens,
+            response_format={"type": "json_object"} if kwargs.pop("json_mode", False) else None,
+            # max_tokens=max_tokens,
             **kwargs
         )
         content = (response.choices[0].message.content or "").strip()
