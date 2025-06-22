@@ -25,6 +25,10 @@ class TaskExecutor:
 
     # ------------------------------------------------------------------ #
     def build_patch(self, task: Dict) -> str:
+        # >>> NEW: accept a pre-computed raw patch <<<
+        raw = task.get("patch")
+        if isinstance(raw, str) and raw.strip():
+            return raw.strip() + ("\n" if not raw.endswith("\n") else "")
         try:
             diff_info = task.get("diff")
             if not diff_info:
