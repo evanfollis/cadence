@@ -2,12 +2,8 @@
 """
 Cadence DevOrchestrator
 -----------------------
-The *single* source of truth for phase-ordering in the development loop.
-
-NEW FUNCTIONALITY (2025-06-21)
-    • Atomic rollback: if any failure occurs **after** a patch is applied
-      but **before** commit succeeds, we automatically revert the working
-      tree to its pristine state using `git apply -R`.
+Now wires ShellRunner with TaskRecord and attaches the *current* task
+before any shell operation so that ShellRunner can persist failures.
 """
 
 from __future__ import annotations
@@ -27,10 +23,11 @@ class DevOrchestrator:
     def __init__(self, config: dict):
         self.backlog = BacklogManager(config["backlog_path"])
         self.generator = TaskGenerator(config.get("template_file"))
+        self.record = TaskRecord(config["record_file"])
+        # ShellRunner now receives TaskRecord so it can self-record failures
+        self.shell = ShellRunner(config["repo_dir"], task_record=self.record)
         self.executor = TaskExecutor(config["src_root"])
         self.reviewer = TaskReviewer(config.get("ruleset_file"))
-        self.shell = ShellRunner(config["repo_dir"])
-        self.record = TaskRecord(config["record_file"])
 
     # ------------------------------------------------------------------ #
     # Internal helper – ALWAYS log, never raise
@@ -42,7 +39,7 @@ class DevOrchestrator:
             print(f"[Record-Error] {e}", file=sys.stderr)
 
     # ------------------------------------------------------------------ #
-    # Pretty-printing helpers
+    # Pretty-printing helpers  (unchanged)
     # ------------------------------------------------------------------ #
     def show(self, status: str = "open", printout: bool = True):
         items = self.backlog.list_items(status)
@@ -74,14 +71,10 @@ class DevOrchestrator:
     # ------------------------------------------------------------------ #
     def run_task_cycle(self, select_id: str | None = None, *, interactive: bool = True):
         """
-        End-to-end flow for ONE micro-task.
-
-        NEW BEHAVIOUR
-            • Generates a reverse diff immediately after patch apply.
-            • Any failure **before** commit triggers automatic rollback.
+        End-to-end flow for ONE micro-task with auto-rollback on failure.
         """
-        rollback_patch: str | None = None   # Will hold the *forward* patch
-        task: dict | None = None            # current task for logging
+        rollback_patch: str | None = None
+        task: dict | None = None
 
         try:
             # 1. Select Task --------------------------------------------------
@@ -99,15 +92,18 @@ class DevOrchestrator:
                 idx = self._prompt_pick(len(open_tasks))
                 task = open_tasks[idx]
             else:
-                task = open_tasks[0]  # default: pick first open
+                task = open_tasks[0]
 
             print(f"\n[Selected task: {task['id'][:8]}] {task.get('title')}\n")
+
+            # Attach task so ShellRunner can self-record failures
+            self.shell.attach_task(task)
 
             # 2. Build patch --------------------------------------------------
             self._record(task, "build_patch")
             try:
                 patch = self.executor.build_patch(task)
-                rollback_patch = patch  # Save for potential rollback
+                rollback_patch = patch
                 self._record(task, "patch_built", {"patch": patch})
                 print("--- Patch built ---\n", patch)
             except PatchBuildError as ex:
@@ -137,7 +133,6 @@ class DevOrchestrator:
 
             # ------------------------------- #
             # --- CRITICAL SECTION BEGIN --- #
-            # Any failure after this point MUST rollback before returning.
             # ------------------------------- #
 
             # 5. Run tests ----------------------------------------------------
@@ -152,9 +147,7 @@ class DevOrchestrator:
                 self._attempt_rollback(task, rollback_patch, src_stage="test")
                 return {"success": False, "stage": "test", "test_result": test_result}
 
-            # 6. (Optional) extra review could go here ------------------------
-
-            # 7. Commit -------------------------------------------------------
+            # 6. Commit -------------------------------------------------------
             commit_msg = f"[Cadence] {task['id'][:8]} {task.get('title', '')}"
             try:
                 sha = self.shell.git_commit(commit_msg)
@@ -163,11 +156,10 @@ class DevOrchestrator:
             except ShellCommandError as ex:
                 self._record(task, "failed_commit", {"error": str(ex)})
                 print(f"[X] git commit failed: {ex}")
-                # Commit failure ⇒ rollback
                 self._attempt_rollback(task, rollback_patch, src_stage="commit")
                 return {"success": False, "stage": "commit", "error": str(ex)}
 
-            # 8. Mark task done + archive ------------------------------------
+            # 7. Mark task done + archive ------------------------------------
             self.backlog.update_item(task["id"], {"status": "done"})
             task = self.backlog.get_item(task["id"])
             self._record(task, "status_done")
@@ -180,27 +172,16 @@ class DevOrchestrator:
             return {"success": True, "commit": sha, "task_id": task["id"]}
 
         except Exception as ex:
-            # Catch-all safety net: attempt rollback if patch was applied
             if task and rollback_patch:
                 self._attempt_rollback(task, rollback_patch, src_stage="unexpected", quiet=True)
             print(f"[X] Cycle failed: {ex}")
             return {"success": False, "error": str(ex)}
 
     # ------------------------------------------------------------------ #
-    # Rollback helper
+    # Rollback helper (unchanged logic)
     # ------------------------------------------------------------------ #
     def _attempt_rollback(self, task: dict, patch: str | None, *, src_stage: str, quiet: bool = False):
-        """
-        Try to undo an applied patch.  Records outcome to TaskRecord.
-
-        Args:
-            task:       The current task dict (for logging).
-            patch:      The *forward* patch previously applied.
-            src_stage:  Where rollback was triggered (e.g., "test", "commit").
-            quiet:      If True, suppress stdout noise (used in unexpected fail).
-        """
         if not patch:
-            # Defensive: nothing to rollback
             self._record(task, "rollback_skip_no_patch")
             return
 
@@ -210,7 +191,6 @@ class DevOrchestrator:
             if not quiet:
                 print("[↩] Rollback successful – working tree restored.")
         except ShellCommandError as rb_ex:
-            # CRITICAL: rollback failed – manual intervention required
             self._record(
                 task,
                 "critical_rollback_failure",
@@ -219,7 +199,7 @@ class DevOrchestrator:
             print(f"[!!] Rollback FAILED – manual fix required: {rb_ex}")
 
     # ------------------------------------------------------------------ #
-    # CLI dispatch helpers
+    # CLI + interactive helpers (unchanged from previous version)
     # ------------------------------------------------------------------ #
     def cli_entry(self, command: str, **kwargs):
         try:
@@ -241,9 +221,6 @@ class DevOrchestrator:
         except Exception as ex:
             print(f"[X] CLI command '{command}' failed: {ex}")
 
-    # ------------------------------------------------------------------ #
-    # Notebook / interactive helper
-    # ------------------------------------------------------------------ #
     def _prompt_pick(self, n):
         while True:
             ans = input(f"Select task [0-{n-1}]: ")
@@ -257,7 +234,7 @@ class DevOrchestrator:
 
 
 # --------------------------------------------------------------------------- #
-# Stand-alone execution (developer convenience)
+# Stand-alone execution helper
 # --------------------------------------------------------------------------- #
 if __name__ == "__main__":
     CONFIG = dict(

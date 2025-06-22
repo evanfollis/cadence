@@ -33,6 +33,13 @@ def get_env(key: str, required=True, default=None):
         raise RuntimeError(f"Environment variable {key} not set.")
     return val or default
 
+def _count_tokens(model: str, messages: List[Dict[str, str]]) -> int:
+    enc = tiktoken.get_encoding("o200k_base")
+    num = 0
+    for m in messages:
+        num += len(enc.encode(m["role"])) + len(enc.encode(m["content"]))
+    return num
+
 # Centralized sync/async LLM client
 class LLMClient:
     def __init__(
@@ -57,13 +64,6 @@ class LLMClient:
         if agent_type and agent_type in _DEFAULT_MODELS:
             return _DEFAULT_MODELS[agent_type]
         return self.default_model
-    
-    def _count_tokens(model: str, messages: List[Dict[str, str]]) -> int:
-        enc = tiktoken.encoding_for_model(model)          # may raise for unknown
-        num = 0
-        for m in messages:
-            num += len(enc.encode(m["role"])) + len(enc.encode(m["content"]))
-        return num
 
     def call(
         self,
@@ -77,7 +77,7 @@ class LLMClient:
         used_model = self._resolve_model(model, agent_type)
         msgs = messages.copy()
 
-        prompt_tokens = self._count_tokens(used_model, msgs)
+        prompt_tokens = _count_tokens(used_model, msgs)
         t0 = time.perf_counter()
 
         if system_prompt and not any(m.get("role") == "system" for m in msgs):

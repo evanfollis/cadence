@@ -39,6 +39,12 @@ One canonical document defines *what* must happen and *in what order*. All other
 
 See `docs/architecture.mmd` for the system flow.
 
+### Context Selector (planned)
+If repo snapshot > 50k tokens, ExecutionAgent must call
+cadence.context.select.select_context() with a token budget set in
+DEV_CONFIG.yaml.  The selector walks the module-import graph breadth-first
+until the budget is reached.  Doc & code added in commit <SHA>.
+
 ---
 
 *Change‑log:* 2025‑06‑20 — merged DEV\_WORKFLOW & DEV\_PROCESS; added strict phase table.
