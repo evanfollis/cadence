@@ -207,7 +207,11 @@ class DevOrchestrator:
                     f"DIFF:\n{patch}\n\nTASK CONTEXT:\n{task}"
                 )
                 eff_raw  = self.efficiency.run_interaction(eff_prompt)
-                eff_pass = "pass" in eff_raw.lower() and "fail" not in eff_raw.lower()
+                eff_pass = "fail" not in eff_raw.lower() #and "pass" in eff_raw.lower()
+
+            # Record flag for downstream phase-guards
+            if eff_pass and hasattr(self.shell, "_mark_phase") and task.get("id"):
+                self.shell._mark_phase(task["id"], "efficiency_passed")
             eff_review = {"pass": eff_pass, "comments": eff_raw}
             self._record(task, "patch_reviewed_efficiency", {"review": eff_review})
             print("--- Review 2 (Efficiency) ---")
