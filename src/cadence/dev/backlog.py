@@ -44,6 +44,7 @@ class TaskNotFoundError(Exception):
 # --------------------------------------------------------------------------- #
 REQUIRED_FIELDS = ("id", "title", "type", "status", "created_at")
 
+VALID_STATUSES = ("open", "in_progress", "done", "archived", "blocked")
 
 # --------------------------------------------------------------------------- #
 # BacklogManager
@@ -72,13 +73,17 @@ class BacklogManager:
         """
         Return a list of tasks filtered by status.
         status: "open", "in_progress", "done", "archived" or "all"
+        * Items with status "blocked" are never included in list_items("open")
         """
         with self._lock:
-            data = (
-                list(self._items)
-                if status == "all"
-                else [item for item in self._items if item.get("status", "open") == status]
-            )
+            if status == "open":
+                data = [item for item in self._items if item.get("status", "open") == "open"]
+                # explicit: blocked tasks are NOT returned for "open":
+                data = [item for item in data if item.get("status") != "blocked"]
+            elif status == "all":
+                data = list(self._items)
+            else:
+                data = [item for item in self._items if item.get("status", "open") == status]
             # Shallow-copy so caller cannot mutate our internal state.
             return [dict(item) for item in data]
 
@@ -182,6 +187,9 @@ class BacklogManager:
                     raise TaskStructureError(f"Missing required field: {field}")
         if not isinstance(t["id"], str):
             t["id"] = str(t["id"])
+        # Validate status field:
+        if t["status"] not in VALID_STATUSES:
+            raise TaskStructureError(f"Invalid status: {t['status']}. Valid: {VALID_STATUSES}")
         return t
 
     # ------------------------------- #

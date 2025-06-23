@@ -11,7 +11,7 @@ before being handed to ShellRunner.
 """
 
 from __future__ import annotations
-
+import os
 from pathlib import Path
 from shutil import copytree
 from tempfile import TemporaryDirectory
@@ -29,15 +29,9 @@ class PatchBuildError(RuntimeError):
 # Public API
 # --------------------------------------------------------------------------- #
 def build_patch(change_set: ChangeSet, repo_dir: str | Path) -> str:
-    """
-    Return a validated unified diff for *change_set* relative to *repo_dir*.
-
-    • Enforces relative paths.
-    • Guarantees trailing newline required by git.
-    • Uses `--binary` so images & line-ending changes survive intact.
-    """
+    …
     repo_dir = Path(repo_dir).resolve()
-    change_set.validate_against_repo(repo_dir)  # SHA-guard (no-op if not provided)
+    change_set.validate_against_repo(repo_dir)
 
     with TemporaryDirectory() as tmp:
         shadow = Path(tmp) / "shadow"
@@ -46,7 +40,7 @@ def build_patch(change_set: ChangeSet, repo_dir: str | Path) -> str:
         for edit in change_set.edits:
             _apply_edit_to_shadow(edit, shadow)
 
-        # git diff --no-index produces exit-code 1 when a diff exists.
+        # ---- Git diff (run *inside* repo) --------------------------
         proc = subprocess.run(
             [
                 "git",
@@ -57,27 +51,47 @@ def build_patch(change_set: ChangeSet, repo_dir: str | Path) -> str:
                 "--src-prefix=a/",
                 "--dst-prefix=b/",
                 "--",
-                str(repo_dir),
-                str(shadow),
+                ".",                  # <- left side: current repo
+                str(shadow),          #    right side: shadow copy
             ],
+            cwd=repo_dir,             # <- KEY CHANGE
             capture_output=True,
             text=True,
         )
 
-        if proc.returncode not in (0, 1):  # 0=same, 1=diff produced
+        if proc.returncode not in (0, 1):
             raise PatchBuildError(proc.stderr.strip())
 
-        patch = proc.stdout
+        patch = _rewrite_shadow_paths(proc.stdout, shadow, repo_dir)
         if not patch.strip():
             raise PatchBuildError("ChangeSet produced an empty diff.")
-
         if not patch.endswith("\n"):
             patch += "\n"
 
-        # Final safety-check
         _ensure_patch_applies(patch, repo_dir)
-
         return patch
+    
+# -------------------------------------------------------------------
+# Helper – strip absolute shadow prefix from +++ lines
+# -------------------------------------------------------------------
+def _rewrite_shadow_paths(raw: str, shadow_root: Path, repo_root: Path) -> str:
+    """
+    Convert
+        --- a/src/foo.py
+        +++ b/var/folders/…/shadow/src/foo.py
+    into
+        --- a/src/foo.py
+        +++ b/src/foo.py
+    """
+    shadow_prefix = str(shadow_root) + os.sep
+    fixed_lines = []
+    for line in raw.splitlines():
+        if line.startswith("+++ ") and shadow_prefix in line:
+            head, _, tail = line.partition(shadow_prefix)
+            fixed_lines.append("+++ b/" + tail)
+        else:
+            fixed_lines.append(line)
+    return "\n".join(fixed_lines)
 
 
 # --------------------------------------------------------------------------- #

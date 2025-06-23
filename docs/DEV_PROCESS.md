@@ -21,3 +21,4 @@
 ## Guard Rails
 * Commit blocked unless phases 01-07 succeed **and** flags `review_passed`, `efficiency_passed`, `branch_isolated`, `tests_passed` are present.
 * Merge blocked unless branch fast-forwards and post-merge tests pass.
+* **Blocked Tasks**: BacklogManager enforces that tasks with status `blocked` are always excluded from the list of "open" tasks; such parent tasks are paused while failure-repair subtasks run.
