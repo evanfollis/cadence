@@ -1,36 +1,22 @@
-
 flowchart TD
-subgraph Orchestrator
-ORCH\[DevOrchestrator]
-end
+  subgraph Orchestrator
+      ORCH[DevOrchestrator]
+  end
+  subgraph Roles
+      BACK[BacklogManager]
+      GEN[TaskGenerator]
+      EXEC[TaskExecutor]
+      REV[TaskReviewer]
+      EFF[EfficiencyAgent]
+      BRN[ShellRunner<br/>Branch-Isolate]
+      TEST[ShellRunner<br/>Pytest]
+      MERG[MergeCoordinator]
+      REC[TaskRecord]
+      META[MetaAgent]
+  end
 
-```
-subgraph Roles
-    BACK[BacklogManager]
-    GEN[TaskGenerator]
-    EXEC[TaskExecutor]
-    SHELL[ShellRunner]
-    REV[TaskReviewer]
-    RECORD[TaskRecord]
-    META[MetaAgent]
-end
-
-ORCH --> BACK
-ORCH --> GEN
-ORCH --> EXEC
-ORCH --> SHELL
-ORCH --> REV
-ORCH --> RECORD
-ORCH --> META
-
-EXEC --> SHELL
-SHELL --> REV
-REV --> ORCH
-
-SHELL --> RECORD
-REV --> RECORD
-META --> ORCH
-META --> RECORD
-```
-
-%% End of architecture.mmd
+  ORCH --> BACK & GEN & EXEC & REV & EFF & BRN & TEST & REC & META
+  EXEC --> REV & EFF
+  BRN --> TEST --> MERG
+  MERG --> REC
+  META --> ORCH

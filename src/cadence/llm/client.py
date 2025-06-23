@@ -67,8 +67,22 @@ class LLMClient:
             self._sync_client = None
             self._async_client = None
         else:
-            self._sync_client = OpenAI(api_key=self.api_key, base_url=self.api_base)
-            self._async_client = AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
+            try:
+                self._sync_client  = OpenAI(api_key=self.api_key,
+                                            base_url=self.api_base)
+                self._async_client = AsyncOpenAI(api_key=self.api_key,
+                                                 base_url=self.api_base)
+                # If the test-suite monkey-patched OpenAI to a stub that
+                # returns None we must still fall back to stub-mode.
+                if self._sync_client is None or not hasattr(self._sync_client,
+                                                            "chat"):
+                    raise AttributeError
+            except Exception:                      # noqa: BLE001
+                self.stub = True
+                self._sync_client = self._async_client = None
+                if not LLMClient._warned_stub:
+                    logger.warning("[Cadence] LLMClient stub-mode (auto)")
+                    LLMClient._warned_stub = True
 
     # ------------------------------------------------------------------ #
     def _resolve_model(self, model: Optional[str], agent_type: Optional[str]) -> str:

@@ -1,50 +1,23 @@
+# CADENCE DEVELOPMENT PROCESS (v2 — 2025-06-23)
 
-# CADENCE DEVELOPMENT PROCESS
+## Phase Table — **MUST NOT DRIFT**  
 
-*Last‑updated: 2025‑06‑20*
+| Seq | Phase            | Responsible Class / Service         | Fail Criterion                       |
+|-----|------------------|--------------------------------------|--------------------------------------|
+| 01  | Backlog          | BacklogManager                       | Empty backlog                        |
+| 02  | Generate         | TaskGenerator                        | Malformed task                       |
+| 03  | Execute          | TaskExecutor                         | Patch invalid                        |
+| 04  | Review-Reasoning | TaskReviewer                         | Review rejects diff                  |
+| 05  | Review-Efficiency| `EfficiencyAgent` (LLM)              | Lint or metric failure               |
+| 06  | Branch-Isolate   | ShellRunner.git_checkout_branch      | Branch creation fails                |
+| 07  | Test (pre-merge) | ShellRunner.run_pytest               | Tests fail                           |
+| 08  | Commit           | ShellRunner.git_commit               | Phase guard missing flags            |
+| 09  | Merge Queue      | MergeCoordinator (new)               | Conflicts or post-merge test fail    |
+| 10  | Record           | TaskRecord                           | State not persisted                  |
+| 11  | Meta             | MetaAgent                            | Drift > policy threshold             |
 
-## 1 · Overview
+*Phase sequencing validated at runtime by `phase_guard.enforce_phase()` and at doc-time by `tools/lint_docs.py`.*
 
-One canonical document defines *what* must happen and *in what order*. All other docs reference this file to avoid drift.
-
-## 2 · Core Workflow Phases
-
-| Phase        | Role (Class)     | Critical Interfaces                           | Fail Criterion                 |
-| ------------ | ---------------- | --------------------------------------------- | ------------------------------ |
-| **Backlog**  | `BacklogManager` | `list_items`, `add_item`, `archive_completed` | Empty backlog blocks pipeline. |
-| **Generate** | `TaskGenerator`  | `generate_tasks`, `overwrite_tasks`           | Ill‑formed tasks.              |
-| **Execute**  | `TaskExecutor`   | `build_patch`, `refine_patch`                 | Patch invalid or cannot apply. |
-| **Test**     | `ShellRunner`    | `run_pytest`, `git_apply`                     | Test suite fails.              |
-| **Review**   | `TaskReviewer`   | `review_patch`                                | Review rejects diff.           |
-| **Commit**   | `ShellRunner`    | `git_commit`                                  | Commit fails or skipped.       |
-| **Record**   | `TaskRecord`     | `save`, `append_iteration`                    | State not persisted.           |
-| **Meta**     | `MetaAgent`      | `analyse`, `alert`                            | Drift > policy threshold.      |
-
-*Sequence is strict; no phase may be skipped or merged.*
-
-## 3 · Guard Rails
-
-* Tests **and** review must pass before commit.
-* Overrides require explicit rationale and are logged.
-* All artefacts (tasks, diffs, logs) are immutable once archived.
-
-## 4 · Failure Criteria
-
-* Roles perform multiple responsibilities.
-* Orchestration happens outside `DevOrchestrator`.
-* Silent state transitions or missing logs.
-* Context injection exceeds model window constraints (see DEV\_AGENTS).
-
-## 5 · Reference Architecture Diagram
-
-See `docs/architecture.mmd` for the system flow.
-
-### Context Selector (planned)
-If repo snapshot > 50k tokens, ExecutionAgent must call
-cadence.context.select.select_context() with a token budget set in
-DEV_CONFIG.yaml.  The selector walks the module-import graph breadth-first
-until the budget is reached.  Doc & code added in commit <SHA>.
-
----
-
-*Change‑log:* 2025‑06‑20 — merged DEV\_WORKFLOW & DEV\_PROCESS; added strict phase table.
+## Guard Rails
+* Commit blocked unless phases 01-07 succeed **and** flags `review_passed`, `efficiency_passed`, `branch_isolated`, `tests_passed` are present.
+* Merge blocked unless branch fast-forwards and post-merge tests pass.
