@@ -42,9 +42,12 @@ class FileEdit:
 
     @staticmethod
     def from_dict(obj: Dict[str, Any]) -> "FileEdit":
+        content = obj.get("after")
+        if content is None and obj.get("after_file"):
+            content = Path(obj["after_file"]).read_text(encoding="utf-8")
         return FileEdit(
             path=obj["path"],
-            after=obj.get("after"),
+            after=content,
             before_sha=obj.get("before_sha"),
             mode=obj.get("mode", "modify"),
         )

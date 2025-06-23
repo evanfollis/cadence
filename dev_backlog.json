@@ -81,12 +81,24 @@
   },
   {
     "id": "wp-1a-fixups",
-    "title": "WP-1a · Branch-isolation follow-ups",
-    "type": "micro",
-    "status": "open",
-    "created_at": "2025-06-23T00:00:00Z",
-
-    "patch": "diff --git a/src/cadence/dev/orchestrator.py b/src/cadence/dev/orchestrator.py\nindex 2b5e9ff..7daa13d 100644\n--- a/src/cadence/dev/orchestrator.py\n+++ b/src/cadence/dev/orchestrator.py\n@@\n-from __future__ import annotations\n-import sys\n+from __future__ import annotations\n+import logging\n+import sys\n@@\n-from cadence.agents.registry import get_agent  # EfficiencyAgent\n+from cadence.agents.registry import get_agent  # EfficiencyAgent\n+from .meta import MetaAgent\n@@\n-        # Behaviour toggles --------------------------------------------------\n-        self.backlog_autoreplenish_count: int = config.get(\n-            \"backlog_autoreplenish_count\", 3\n-        )\n+        # Helper alias so every snapshot funnels through one place\n+        self._record = self._record_snapshot\n+\n+        # Behaviour toggles --------------------------------------------------\n+        self.backlog_autoreplenish_count = config.get(\"backlog_autoreplenish_count\", 3)\n@@\n+    def _record_snapshot(self, task: dict, state: str, extra: Dict[str, Any] | None = None) -> None:\n+        \"\"\"Centralised wrapper around TaskRecord.save with logging & error-swallow.\"\"\"\n+        try:\n+            self.record.save(task, state=state, extra=extra or {})\n+        except TaskRecordError as exc:  # noqa: BLE001\n+            logging.getLogger(__name__).warning(\"[Record-Error] %%s\", exc)\n+\n+log = logging.getLogger(\"cadence.orchestrator\")\n+\n diff --git a/src/cadence/dev/shell.py b/src/cadence/dev/shell.py\n index a901166..5ddc789 100644\n --- a/src/cadence/dev/shell.py\n +++ b/src/cadence/dev/shell.py\n@@\n-import os\n-import subprocess\n-import tempfile\n-from typing import Optional, Dict, List, Set\n+import os\n+import subprocess\n+from typing import Dict, List, Optional, Set\n@@\n-        cmd_exists = [\"git\", \"branch\", \"--list\", branch_name]\n+        cmd_exists = [\"git\", \"branch\", \"--list\", branch_name]\n@@\n-        if self._current_task and hasattr(self, \"_mark_phase\"):\n-            self._mark_phase(self._current_task[\"id\"], \"branch_isolated\")\n+        if self._current_task:\n+            self._mark_phase(self._current_task[\"id\"], \"branch_isolated\")\n+\n+# file ends with a single newline\n+\n diff --git a/src/cadence/dev/patch_builder.py b/src/cadence/dev/patch_builder.py\n index 4e2a7b1..a9d6e38 100644\n --- a/src/cadence/dev/patch_builder.py\n +++ b/src/cadence/dev/patch_builder.py\n@@\n-            \"git\",\n-            \"diff\",\n-            \"--no-index\",\n-            \"--binary\",\n-            \"--src-prefix=a/\",\n-            \"--dst-prefix=b/\",\n+            \"git\", \"diff\", \"--no-index\", \"--binary\", \"--relative\",\n+            \"--src-prefix=a/\", \"--dst-prefix=b/\",\n"
+    "message": "WP-1a · Fix branch-isolation follow-ups (imports, record helper, path rewrite)",
+    "edits": [
+      {
+        "path": "src/cadence/dev/orchestrator.py",
+        "mode": "modify",
+        "after_file": "temp/orchestrator.py"
+      },
+      {
+        "path": "src/cadence/dev/shell.py",
+        "mode": "modify",
+        "after_file": "temp/shell.py"
+      },
+      {
+        "path": "src/cadence/dev/patch_builder.py",
+        "mode": "modify",
+        "after_file": "temp/patch_builder.py"
+      }
+    ]
   },
   {
     "id": "83ea5aeb-e431-4378-8681-43f6fa4318db",
