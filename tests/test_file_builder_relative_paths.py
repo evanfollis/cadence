@@ -40,9 +40,13 @@ def test_patch_builder_generates_relative_paths(tmp_path: Path):
     # 1. No absolute /var/…/shadow path left in the diff
     assert "/shadow/" not in patch, "shadow path still present in patch"
 
-    # 2. Headers are repository-relative
-    assert patch.startswith("--- a/src/demo.py"), "unexpected from-file header"
-    assert "\n+++ b/src/demo.py" in patch, "unexpected to-file header"
+    # 2. Headers are repository-relative and start with a proper diff header
+    assert patch.startswith(
+        "diff --git a/src/demo.py b/src/demo.py"
+    ), "unexpected diff --git header"
+
+    assert "\n--- a/src/demo.py" in patch, "missing from-file header"
+    assert "\n+++ b/src/demo.py" in patch, "missing to-file header"
 
     # 3. Patch applies cleanly to the working tree
     subprocess.run(["git", "apply", "--check", "-"], cwd=repo, input=patch,
