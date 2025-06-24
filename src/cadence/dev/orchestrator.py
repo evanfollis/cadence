@@ -21,7 +21,8 @@ from __future__ import annotations
 
 import sys
 from typing import Any, Dict, Optional
-
+import hashlib
+from pathlib import Path
 import tabulate  # noqa: F401 – needed by _format_backlog
 
 from cadence.agents.registry import get_agent  # EfficiencyAgent
@@ -176,6 +177,15 @@ class DevOrchestrator:
             print(f"\n[Selected task: {task['id'][:8]}] {task.get('title')}\n")
             self.shell.attach_task(task)  # allow ShellRunner to self-record
 
+            # --- Branch isolation (NEW) ---------------------------------
+            branch = f"task-{task['id'][:8]}"
+            try:
+                self.shell.git_checkout_branch(branch)
+                # self._record(task, "branch_isolated", {"branch": branch})
+            except ShellCommandError as ex:
+                self._record(task, "failed_branch_isolation", {"error": str(ex)})
+                return {"success": False, "stage": "branch_isolation", "error": str(ex)}
+
             # 2️⃣  Build patch -----------------------------------------------
             self._record(task, "build_patch")
             try:
@@ -203,6 +213,8 @@ class DevOrchestrator:
                     "stage": "patch_review_reasoning",
                     "review": review1,
                 }
+            # phase flag for commit-guard
+            self.shell._mark_phase(task["id"], "review_passed")
 
             # 4️⃣  Review #2 – Efficiency ------------------------------------
             # Skip hard-LLM step in stub-mode so CI remains offline-safe
@@ -294,6 +306,18 @@ class DevOrchestrator:
                 print(f"[X] git commit failed: {ex}")
                 self._attempt_rollback(task, rollback_patch, src_stage="commit")
                 return {"success": False, "stage": "commit", "error": str(ex)}
+            
+            # ---- hot-fix: update before_sha in remaining open tasks
+            changed = {
+                e["path"]
+                for e in task.get("change_set", {}).get("edits", [])
+            }
+            file_shas = {}
+            for p in changed:
+                f = Path(self.executor.src_root) / p
+                if f.exists():
+                    file_shas[p] = hashlib.sha1(f.read_bytes()).hexdigest()
+            self.executor.propagate_before_sha(file_shas, self.backlog)
 
             # 8️⃣  Mark done & archive ---------------------------------------
             self.backlog.update_item(task["id"], {"status": "done"})

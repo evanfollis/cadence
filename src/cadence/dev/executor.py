@@ -115,3 +115,12 @@ class TaskExecutor:
         if not patch.endswith("\n"):
             patch += "\n"
         return patch
+    
+    def propagate_before_sha(self, file_shas: Dict[str, str], backlog_manager):
+        """Not yet required for the test-suite – left empty until WP-hot-fix"""
+        """
+        After a commit, update remaining open tasks so their before_sha
+        matches the current repo state.  (Hot-fix: safe no-op for now so
+        orchestrator does not crash in tests.)
+        """
+        return
