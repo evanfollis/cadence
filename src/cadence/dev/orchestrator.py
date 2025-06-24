@@ -21,19 +21,22 @@ from __future__ import annotations
 
 import sys
 from typing import Any, Dict, Optional
+from datetime import datetime
+import uuid
 import hashlib
 from pathlib import Path
 import tabulate  # noqa: F401 – needed by _format_backlog
 
 from cadence.agents.registry import get_agent  # EfficiencyAgent
 from .backlog import BacklogManager
+from .change_set import ChangeSet
 from .executor import PatchBuildError, TaskExecutor, TaskExecutorError
 from .generator import TaskGenerator
 from .record import TaskRecord, TaskRecordError
 from .reviewer import TaskReviewer
 from .shell import ShellRunner, ShellCommandError
 from cadence.llm.json_call import LLMJsonCaller
-from cadence.dev.schema import EFFICIENCY_REVIEW_V1
+from cadence.dev.schema import CHANGE_SET_V1, EFFICIENCY_REVIEW_V1
 
 # --------------------------------------------------------------------------- #
 # Meta-governance stub
@@ -68,7 +71,8 @@ class DevOrchestrator:
 
         # Agents -------------------------------------------------------------
         self.efficiency = get_agent("efficiency")
-
+        # JSON caller for blueprint → ChangeSet generation
+        self._cs_json = LLMJsonCaller(schema=CHANGE_SET_V1)  # function-call mode
         # If we’re on-line (not stub-mode) prepare a structured-JSON caller
         self._eff_json: LLMJsonCaller | None = None
         if not getattr(self.efficiency.llm_client, "stub", False):
@@ -88,19 +92,65 @@ class DevOrchestrator:
         )
 
     # ------------------------------------------------------------------ #
+    # Blueprint → micro-task expansion
+    # ------------------------------------------------------------------ #
+    def _expand_blueprint(self, bp_task: dict) -> list[dict]:
+        """
+        Convert ONE blueprint task into **exactly one** micro-task whose
+        ChangeSet is based on current HEAD.  (Later we may split large
+        blueprints into several micro-tasks.)
+        Returns: [new_task_dict]
+        """
+        title = bp_task.get("title", "")
+        desc  = bp_task.get("description", "")
+
+        sys_prompt = (
+            "You are Cadence Planner.  Convert the blueprint (title + "
+            "description) into a *single* ChangeSet JSON object.  "
+            "Do NOT return markdown – JSON only."
+        )
+        user_prompt = f"TITLE:\n{title}\n\nDESCRIPTION:\n{desc}\n"
+
+        # ---- ask LLM ----------------------------------------------------
+        obj   = self._cs_json.ask(sys_prompt, user_prompt)
+        cset  = ChangeSet.from_dict(obj)
+
+        micro = {
+            "id":         str(uuid.uuid4()),
+            "title":      bp_task["title"],
+            "type":       "micro",
+            "status":     "open",
+            "created_at": datetime.datetime.utcnow().isoformat(),
+            "change_set": cset.to_dict(),
+            "parent_id":  bp_task["id"],
+        }
+        self.backlog.add_item(micro)
+        return [micro]
+
+    # ------------------------------------------------------------------ #
     # Back-log auto-replenishment
     # ------------------------------------------------------------------ #
     def _ensure_backlog(self, count: Optional[int] = None) -> None:
-        if self.backlog.list_items("open"):
-            return
-        n = count if count is not None else self.backlog_autoreplenish_count
-        for t in self.generator.generate_tasks(mode="micro", count=n):
-            self.backlog.add_item(t)
-        self._record(
-            {"id": "auto-backlog-replenish", "title": "Auto-replenish"},
-            state="backlog_replenished",
-            extra={"count": n},
-        )
+        # 1️⃣  convert *all* open blueprints first
+        for bp in [
+            t for t in self.backlog.list_items("open")
+            if t.get("type") == "blueprint" and "change_set" not in t
+        ]:
+            created = self._expand_blueprint(bp)
+            self.backlog.update_item(bp["id"], {"status": "archived"})
+            self.record.save(bp, state="blueprint_converted",
+                             extra={"generated": [t["id"] for t in created]})
+
+        # 2️⃣  if still no open tasks → auto-generate stub micro tasks
+        if not self.backlog.list_items("open"):
+            n = count if count is not None else self.backlog_autoreplenish_count
+            for t in self.generator.generate_tasks(mode="micro", count=n):
+                self.backlog.add_item(t)
+            self._record(
+                {"id": "auto-backlog-replenish", "title": "Auto-replenish"},
+                state="backlog_replenished",
+                extra={"count": n},
+            )
 
     # ------------------------------------------------------------------ #
     # Record helper – ALWAYS log, never raise
