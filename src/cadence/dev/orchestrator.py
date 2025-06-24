@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import sys
 from typing import Any, Dict, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 import uuid
 import hashlib
 from pathlib import Path
@@ -37,6 +37,7 @@ from .reviewer import TaskReviewer
 from .shell import ShellRunner, ShellCommandError
 from cadence.llm.json_call import LLMJsonCaller
 from cadence.dev.schema import CHANGE_SET_V1, EFFICIENCY_REVIEW_V1
+from cadence.context.provider import SnapshotContextProvider
 
 # --------------------------------------------------------------------------- #
 # Meta-governance stub
@@ -71,7 +72,8 @@ class DevOrchestrator:
 
         # Agents -------------------------------------------------------------
         self.efficiency = get_agent("efficiency")
-        self.reasoning = get_agent("reasoning")
+        self.planner = get_agent("reasoning")
+        
         # JSON caller for blueprint → ChangeSet generation
         self._cs_json = LLMJsonCaller(schema=CHANGE_SET_V1)  # function-call mode
         # If we’re on-line (not stub-mode) prepare a structured-JSON caller
@@ -95,38 +97,43 @@ class DevOrchestrator:
     # ------------------------------------------------------------------ #
     # Blueprint → micro-task expansion
     # ------------------------------------------------------------------ #
-    def _expand_blueprint(self, bp_task: dict) -> list[dict]:
-        """
-        Convert ONE blueprint task into **exactly one** micro-task whose
-        ChangeSet is based on current HEAD.  (Later we may split large
-        blueprints into several micro-tasks.)
-        Returns: [new_task_dict]
-        """
-        title = bp_task.get("title", "")
-        desc  = bp_task.get("description", "")
+    def _expand_blueprint(self, bp: dict) -> list[dict]:
+        # 0) always start with fresh context
+        self.planner.reset_context()
+
+        title = bp.get("title", "")
+        desc  = bp.get("description", "")
+        snapshot = SnapshotContextProvider().get_context(
+            Path("src/cadence"), Path("docs"), Path("tools"), Path("tests"),
+            exts=(".py", ".md", ".json", ".mermaid", ".txt", ".yaml", ".yml"),
+        )
 
         sys_prompt = (
-            "You are Cadence Planner.  Convert the blueprint (title + "
-            "description) into a *single* ChangeSet JSON object.  "
-            "Do NOT return markdown – JSON only."
+            "You are Cadence ReasoningAgent. "
+            "Turn the blueprint into a single ChangeSet JSON object "
+            "(CadenceChangeSet schema)."
         )
-        user_prompt = f"TITLE:\n{title}\n\nDESCRIPTION:\n{desc}\n"
+        user_prompt = (
+            f"BLUEPRINT_TITLE:\n{title}\n\nBLUEPRINT_DESC:\n{desc}\n"
+            "---\nCODE_SNAPSHOT:\n{snapshot}\n"
+        )
 
-        # ---- ask LLM ----------------------------------------------------
-        obj   = self._cs_json.ask(sys_prompt, user_prompt)
-        cset  = ChangeSet.from_dict(obj)
+        # ask the agent – we reuse the same LLMJsonCaller so schema
+        # validation / retries stay automatic
+        obj = self._cs_json.ask_using_agent(self.planner, sys_prompt, user_prompt)
+        cset = ChangeSet.from_dict(obj)
 
-        micro = {
-            "id":         str(uuid.uuid4()),
-            "title":      bp_task["title"],
-            "type":       "micro",
-            "status":     "open",
-            "created_at": datetime.datetime.utcnow().isoformat(),
+        micro_task = {
+            "id": str(uuid.uuid4()),
+            "title": title,
+            "type": "micro",
+            "status": "open",
+            "created_at": datetime.now(UTC).isoformat(),
             "change_set": cset.to_dict(),
-            "parent_id":  bp_task["id"],
+            "parent_id": bp["id"],
         }
-        self.backlog.add_item(micro)
-        return [micro]
+        self.backlog.add_item(micro_task)
+        return [micro_task]
 
     # ------------------------------------------------------------------ #
     # Back-log auto-replenishment
@@ -217,7 +224,7 @@ class DevOrchestrator:
         • MetaAgent post-run analysis (non-blocking)  
         """
         # Always start with an up-to-date context for every LLM agent
-        for ag in (self.efficiency, self.reasoning):          # extend when more live agents appear
+        for ag in (self.efficiency, self.planner):          # extend when more live agents appear
             try:
                 ag.reset_context()
             except Exception:                  # noqa: BLE001 – never abort the run

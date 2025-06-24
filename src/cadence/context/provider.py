@@ -4,11 +4,11 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 class ContextProvider(ABC):
     @abstractmethod
-    def get_context(self, *roots: Path, exts=(".py", ".md"), max_bytes=50_000) -> str: ...
+    def get_context(self, *roots: Path, exts=(".py", ".md")) -> str: ...
 class SnapshotContextProvider(ContextProvider):
-    def get_context(self, *roots, exts=(".py", ".md"), max_bytes=50_000, out="-") -> str:
+    def get_context(self, *roots, exts=(".py", ".md"), out="-") -> str:
         args = [sys.executable, "tools/collect_code.py"]
         for r in roots: args += ["--root", str(r)]
         for e in exts:  args += ["--ext", e]
-        args += ["--max-bytes", str(max_bytes), "--out", out]
+        args += ["--out", out]
         return subprocess.run(args, capture_output=True, text=True, check=True).stdout

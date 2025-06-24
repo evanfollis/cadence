@@ -1,0 +1,3 @@
+{"ts": 1750799124.3070982, "agent_id": "n/a", "model": "gpt-4.1", "temperature": null, "top_p": null, "prompt_tokens": 137, "completion_tokens": 1454, "latency_s": 17.516565406000154, "result_sha": "39055b33b0c9db4a83538422e923a3dc3c269148"}
+{"ts": 1750799137.6218686, "agent_id": "n/a", "model": "gpt-4.1", "temperature": null, "top_p": null, "prompt_tokens": 125, "completion_tokens": 958, "latency_s": 13.305075733002013, "result_sha": "1727c3b91d76e8a30584d2504b3d1252488e41eb"}
+{"ts": 1750799150.4811294, "agent_id": "n/a", "model": "gpt-4.1", "temperature": null, "top_p": null, "prompt_tokens": 123, "completion_tokens": 736, "latency_s": 12.849950573003298, "result_sha": "0ab735449fdfdcd7764a144eee8844cfcd0fe26b"}
