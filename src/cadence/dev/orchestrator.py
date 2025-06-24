@@ -73,7 +73,7 @@ class DevOrchestrator:
         # Agents -------------------------------------------------------------
         self.efficiency = get_agent("efficiency")
         self.planner = get_agent("reasoning")
-        
+
         # JSON caller for blueprint → ChangeSet generation
         self._cs_json = LLMJsonCaller(schema=CHANGE_SET_V1)  # function-call mode
         # If we’re on-line (not stub-mode) prepare a structured-JSON caller
@@ -109,19 +109,27 @@ class DevOrchestrator:
         )
 
         sys_prompt = (
-            "You are Cadence ReasoningAgent. "
-            "Turn the blueprint into a single ChangeSet JSON object "
-            "(CadenceChangeSet schema)."
+            "You are Cadence ReasoningAgent.  "
+            "Convert the blueprint (title + description) into exactly ONE "
+            "ChangeSet JSON object that follows the CadenceChangeSet schema.  "
+            "Return JSON only—no markdown fencing."
         )
         user_prompt = (
             f"BLUEPRINT_TITLE:\n{title}\n\nBLUEPRINT_DESC:\n{desc}\n"
             "---\nCODE_SNAPSHOT:\n{snapshot}\n"
         )
 
-        # ask the agent – we reuse the same LLMJsonCaller so schema
-        # validation / retries stay automatic
-        obj = self._cs_json.ask_using_agent(self.planner, sys_prompt, user_prompt)
-        cset = ChangeSet.from_dict(obj)
+        # ---------------------------------------------------------------
+        # 2) Call the planner’s LLM client *through* the existing
+        #    LLMJsonCaller so we keep schema validation & retry logic.
+        #    We do this by cloning the caller and swapping its .llm
+        #    attribute.
+        # ---------------------------------------------------------------
+        planner_caller = LLMJsonCaller(schema=CHANGE_SET_V1)
+        planner_caller.llm = self.planner.llm_client
+
+        obj   = planner_caller.ask(sys_prompt, user_prompt)
+        cset  = ChangeSet.from_dict(obj)
 
         micro_task = {
             "id": str(uuid.uuid4()),
