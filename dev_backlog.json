@@ -125,7 +125,7 @@
     "id": "29ed71b6-a27b-43b1-85a7-d2bb27ac482f",
     "title": "Failure-Responder (Phase-2) \u00b7 Implement src/cadence/dev/failure_responder.py",
     "type": "micro",
-    "status": "open",
+    "status": "archived",
     "created_at": "2025-06-23T21:46:07.604424",
     "change_set": {
       "edits": [
