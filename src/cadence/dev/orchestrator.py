@@ -21,16 +21,22 @@ from __future__ import annotations
 
 import sys
 from typing import Any, Dict, Optional
-
+from datetime import datetime
+import uuid
+import hashlib
+from pathlib import Path
 import tabulate  # noqa: F401 – needed by _format_backlog
 
 from cadence.agents.registry import get_agent  # EfficiencyAgent
 from .backlog import BacklogManager
+from .change_set import ChangeSet
 from .executor import PatchBuildError, TaskExecutor, TaskExecutorError
 from .generator import TaskGenerator
 from .record import TaskRecord, TaskRecordError
 from .reviewer import TaskReviewer
 from .shell import ShellRunner, ShellCommandError
+from cadence.llm.json_call import LLMJsonCaller
+from cadence.dev.schema import CHANGE_SET_V1, EFFICIENCY_REVIEW_V1
 
 # --------------------------------------------------------------------------- #
 # Meta-governance stub
@@ -65,6 +71,16 @@ class DevOrchestrator:
 
         # Agents -------------------------------------------------------------
         self.efficiency = get_agent("efficiency")
+        # JSON caller for blueprint → ChangeSet generation
+        self._cs_json = LLMJsonCaller(schema=CHANGE_SET_V1)  # function-call mode
+        # If we’re on-line (not stub-mode) prepare a structured-JSON caller
+        self._eff_json: LLMJsonCaller | None = None
+        if not getattr(self.efficiency.llm_client, "stub", False):
+            self._eff_json = LLMJsonCaller(
+                schema=EFFICIENCY_REVIEW_V1,
+                function_name="efficiency_review",
+            )
+
         self._enable_meta: bool = config.get("enable_meta", True)
         self.meta_agent: Optional[MetaAgent] = (
             MetaAgent(self.record) if self._enable_meta else None
@@ -76,19 +92,65 @@ class DevOrchestrator:
         )
 
     # ------------------------------------------------------------------ #
+    # Blueprint → micro-task expansion
+    # ------------------------------------------------------------------ #
+    def _expand_blueprint(self, bp_task: dict) -> list[dict]:
+        """
+        Convert ONE blueprint task into **exactly one** micro-task whose
+        ChangeSet is based on current HEAD.  (Later we may split large
+        blueprints into several micro-tasks.)
+        Returns: [new_task_dict]
+        """
+        title = bp_task.get("title", "")
+        desc  = bp_task.get("description", "")
+
+        sys_prompt = (
+            "You are Cadence Planner.  Convert the blueprint (title + "
+            "description) into a *single* ChangeSet JSON object.  "
+            "Do NOT return markdown – JSON only."
+        )
+        user_prompt = f"TITLE:\n{title}\n\nDESCRIPTION:\n{desc}\n"
+
+        # ---- ask LLM ----------------------------------------------------
+        obj   = self._cs_json.ask(sys_prompt, user_prompt)
+        cset  = ChangeSet.from_dict(obj)
+
+        micro = {
+            "id":         str(uuid.uuid4()),
+            "title":      bp_task["title"],
+            "type":       "micro",
+            "status":     "open",
+            "created_at": datetime.datetime.utcnow().isoformat(),
+            "change_set": cset.to_dict(),
+            "parent_id":  bp_task["id"],
+        }
+        self.backlog.add_item(micro)
+        return [micro]
+
+    # ------------------------------------------------------------------ #
     # Back-log auto-replenishment
     # ------------------------------------------------------------------ #
     def _ensure_backlog(self, count: Optional[int] = None) -> None:
-        if self.backlog.list_items("open"):
-            return
-        n = count if count is not None else self.backlog_autoreplenish_count
-        for t in self.generator.generate_tasks(mode="micro", count=n):
-            self.backlog.add_item(t)
-        self._record(
-            {"id": "auto-backlog-replenish", "title": "Auto-replenish"},
-            state="backlog_replenished",
-            extra={"count": n},
-        )
+        # 1️⃣  convert *all* open blueprints first
+        for bp in [
+            t for t in self.backlog.list_items("open")
+            if t.get("type") == "blueprint" and "change_set" not in t
+        ]:
+            created = self._expand_blueprint(bp)
+            self.backlog.update_item(bp["id"], {"status": "archived"})
+            self.record.save(bp, state="blueprint_converted",
+                             extra={"generated": [t["id"] for t in created]})
+
+        # 2️⃣  if still no open tasks → auto-generate stub micro tasks
+        if not self.backlog.list_items("open"):
+            n = count if count is not None else self.backlog_autoreplenish_count
+            for t in self.generator.generate_tasks(mode="micro", count=n):
+                self.backlog.add_item(t)
+            self._record(
+                {"id": "auto-backlog-replenish", "title": "Auto-replenish"},
+                state="backlog_replenished",
+                extra={"count": n},
+            )
 
     # ------------------------------------------------------------------ #
     # Record helper – ALWAYS log, never raise
@@ -165,6 +227,15 @@ class DevOrchestrator:
             print(f"\n[Selected task: {task['id'][:8]}] {task.get('title')}\n")
             self.shell.attach_task(task)  # allow ShellRunner to self-record
 
+            # --- Branch isolation (NEW) ---------------------------------
+            branch = f"task-{task['id'][:8]}"
+            try:
+                self.shell.git_checkout_branch(branch)
+                # self._record(task, "branch_isolated", {"branch": branch})
+            except ShellCommandError as ex:
+                self._record(task, "failed_branch_isolation", {"error": str(ex)})
+                return {"success": False, "stage": "branch_isolation", "error": str(ex)}
+
             # 2️⃣  Build patch -----------------------------------------------
             self._record(task, "build_patch")
             try:
@@ -192,6 +263,8 @@ class DevOrchestrator:
                     "stage": "patch_review_reasoning",
                     "review": review1,
                 }
+            # phase flag for commit-guard
+            self.shell._mark_phase(task["id"], "review_passed")
 
             # 4️⃣  Review #2 – Efficiency ------------------------------------
             # Skip hard-LLM step in stub-mode so CI remains offline-safe
@@ -201,18 +274,35 @@ class DevOrchestrator:
                 if eff_pass and hasattr(self.shell, "_mark_phase"):
                     self.shell._mark_phase(task["id"], "efficiency_passed")
             else:
-                eff_prompt = (
-                    "You are the EfficiencyAgent for the Cadence workflow.\n"
-                    "Review the diff below for best-practice, lint, and summarisation.\n"
-                    f"DIFF:\n{patch}\n\nTASK CONTEXT:\n{task}"
-                )
-                eff_raw = self.efficiency.run_interaction(eff_prompt)
+                # -------- Structured JSON path ----------------------------------
+                if self._eff_json:
+                    sys_prompt = (
+                        "You are the Cadence EfficiencyAgent.  "
+                        "Return ONLY a JSON object matching the EfficiencyReview schema."
+                    )
+                    user_prompt = (
+                        f"DIFF:\n{patch}\n\nTASK CONTEXT:\n{task}\n"
+                        "If the diff should be accepted set pass_review=true, "
+                        "otherwise false."
+                    )
+                    try:
+                        eff_obj = self._eff_json.ask(sys_prompt, user_prompt)
+                        eff_pass = bool(eff_obj["pass_review"])
+                        eff_raw  = eff_obj["comments"]
+                    except Exception as exc:      # JSON invalid → degrade gracefully
+                        eff_raw  = f"[fallback-to-text] {exc}"
+                        eff_pass = True
+                else:
+                    # -------- Legacy heuristic path (stub-mode) -----------------
+                    eff_prompt = (
+                        "You are the EfficiencyAgent for the Cadence workflow.\n"
+                        "Review the diff below for best-practice, lint, and summarisation.\n"
+                        f"DIFF:\n{patch}\n\nTASK CONTEXT:\n{task}"
+                    )
+                    eff_raw = self.efficiency.run_interaction(eff_prompt)
 
-                # Treat review as FAILED only when the assistant gives an
-                # explicit block / reject marker. A mere occurrence of the
-                # word “fail” in prose should not veto the patch.
-                _block_tokens = ("[[fail]]", "block", "rejected", "❌", "do not merge")
-                eff_pass = not any(tok in eff_raw.lower() for tok in _block_tokens)
+                    _block_tokens = ("[[fail]]", "rejected", "❌", "do not merge")
+                    eff_pass = not any(tok in eff_raw.lower() for tok in _block_tokens)
 
             # Record flag for downstream phase-guards
             if eff_pass and hasattr(self.shell, "_mark_phase") and task.get("id"):
@@ -266,6 +356,18 @@ class DevOrchestrator:
                 print(f"[X] git commit failed: {ex}")
                 self._attempt_rollback(task, rollback_patch, src_stage="commit")
                 return {"success": False, "stage": "commit", "error": str(ex)}
+            
+            # ---- hot-fix: update before_sha in remaining open tasks
+            changed = {
+                e["path"]
+                for e in task.get("change_set", {}).get("edits", [])
+            }
+            file_shas = {}
+            for p in changed:
+                f = Path(self.executor.src_root) / p
+                if f.exists():
+                    file_shas[p] = hashlib.sha1(f.read_bytes()).hexdigest()
+            self.executor.propagate_before_sha(file_shas, self.backlog)
 
             # 8️⃣  Mark done & archive ---------------------------------------
             self.backlog.update_item(task["id"], {"status": "done"})

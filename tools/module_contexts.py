@@ -19,6 +19,29 @@ DEFAULT_CONTEXT = dict(
     escalation_review="",
 )
 
+# future context-aware tasks (skeleton) -- algorithm to select context:
+# seed = set(target_modules)
+# context = []
+# budget = max_tokens
+# frontier = seed
+# visited = set()
+
+# while frontier and budget > 0:
+#     next_frontier = set()
+#     for mod in frontier:
+#         if mod in visited:
+#             continue
+#         snippet = module_contexts[mod]["source"]     # or summarised source
+#         tok = token_estimate(snippet)
+#         if tok > budget:
+#             break   # budget exhausted
+#         context.append(snippet)
+#         budget -= tok
+#         visited.add(mod)
+#         next_frontier |= set(module_contexts[mod]["imports"])
+#     frontier = next_frontier - visited
+# return "\n\n".join(context)
+
 def relpath(path):
     return os.path.relpath(path, ROOT).replace(os.sep, "/")
 

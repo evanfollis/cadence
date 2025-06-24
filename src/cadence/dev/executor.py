@@ -58,6 +58,8 @@ class TaskExecutor:
             # 2. new ChangeSet path  ------------------------------------------
             if "change_set" in task:
                 cs_obj = ChangeSet.from_dict(task["change_set"])
+                # Always build relative to repository ROOT (cwd) so paths in
+                # ChangeSet remain valid even when src_root == "cadence"
                 return build_patch(cs_obj, Path("."))
 
             # 3. legacy single-file diff dict  --------------------------------
@@ -115,3 +117,15 @@ class TaskExecutor:
         if not patch.endswith("\n"):
             patch += "\n"
         return patch
+    
+    def propagate_before_sha(self, file_shas: dict[str, str], backlog_mgr):
+        for task in backlog_mgr.list_items("open"):
+            cs = task.get("change_set")
+            if not cs:
+                continue
+            touched = {e["path"] for e in cs["edits"]}
+            if touched & file_shas.keys():
+                for ed in cs["edits"]:
+                    if ed["path"] in file_shas:
+                        ed["before_sha"] = file_shas[ed["path"]]
+                backlog_mgr.update_item(task["id"], {"change_set": cs})
