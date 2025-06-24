@@ -8,6 +8,7 @@
 | 02  | Generate         | TaskGenerator                        | Malformed task                       |
 | 03  | Execute          | TaskExecutor                         | Patch invalid                        |
 | 04  | Review-Reasoning | TaskReviewer                         | Review rejects diff                  |
+| 04-b| Failure-Diagnose | FailureResponder                     | parent status not set / throws       |
 | 05  | Review-Efficiency| `EfficiencyAgent` (LLM)              | Lint or metric failure               |
 | 06  | Branch-Isolate   | ShellRunner.git_checkout_branch      | Branch creation fails                |
 | 07  | Test (pre-merge) | ShellRunner.run_pytest               | Tests fail                           |
@@ -21,4 +22,3 @@
 ## Guard Rails
 * Commit blocked unless phases 01-07 succeed **and** flags `review_passed`, `efficiency_passed`, `branch_isolated`, `tests_passed` are present.
 * Merge blocked unless branch fast-forwards and post-merge tests pass.
-* **Blocked Tasks**: BacklogManager enforces that tasks with status `blocked` are always excluded from the list of "open" tasks; such parent tasks are paused while failure-repair subtasks run.

@@ -31,6 +31,8 @@ from .generator import TaskGenerator
 from .record import TaskRecord, TaskRecordError
 from .reviewer import TaskReviewer
 from .shell import ShellRunner, ShellCommandError
+from cadence.llm.json_call import LLMJsonCaller
+from cadence.dev.schema import EFFICIENCY_REVIEW_V1
 
 # --------------------------------------------------------------------------- #
 # Meta-governance stub
@@ -65,6 +67,15 @@ class DevOrchestrator:
 
         # Agents -------------------------------------------------------------
         self.efficiency = get_agent("efficiency")
+
+        # If we’re on-line (not stub-mode) prepare a structured-JSON caller
+        self._eff_json: LLMJsonCaller | None = None
+        if not getattr(self.efficiency.llm_client, "stub", False):
+            self._eff_json = LLMJsonCaller(
+                schema=EFFICIENCY_REVIEW_V1,
+                function_name="efficiency_review",
+            )
+
         self._enable_meta: bool = config.get("enable_meta", True)
         self.meta_agent: Optional[MetaAgent] = (
             MetaAgent(self.record) if self._enable_meta else None
@@ -201,18 +212,35 @@ class DevOrchestrator:
                 if eff_pass and hasattr(self.shell, "_mark_phase"):
                     self.shell._mark_phase(task["id"], "efficiency_passed")
             else:
-                eff_prompt = (
-                    "You are the EfficiencyAgent for the Cadence workflow.\n"
-                    "Review the diff below for best-practice, lint, and summarisation.\n"
-                    f"DIFF:\n{patch}\n\nTASK CONTEXT:\n{task}"
-                )
-                eff_raw = self.efficiency.run_interaction(eff_prompt)
+                # -------- Structured JSON path ----------------------------------
+                if self._eff_json:
+                    sys_prompt = (
+                        "You are the Cadence EfficiencyAgent.  "
+                        "Return ONLY a JSON object matching the EfficiencyReview schema."
+                    )
+                    user_prompt = (
+                        f"DIFF:\n{patch}\n\nTASK CONTEXT:\n{task}\n"
+                        "If the diff should be accepted set pass_review=true, "
+                        "otherwise false."
+                    )
+                    try:
+                        eff_obj = self._eff_json.ask(sys_prompt, user_prompt)
+                        eff_pass = bool(eff_obj["pass_review"])
+                        eff_raw  = eff_obj["comments"]
+                    except Exception as exc:      # JSON invalid → degrade gracefully
+                        eff_raw  = f"[fallback-to-text] {exc}"
+                        eff_pass = True
+                else:
+                    # -------- Legacy heuristic path (stub-mode) -----------------
+                    eff_prompt = (
+                        "You are the EfficiencyAgent for the Cadence workflow.\n"
+                        "Review the diff below for best-practice, lint, and summarisation.\n"
+                        f"DIFF:\n{patch}\n\nTASK CONTEXT:\n{task}"
+                    )
+                    eff_raw = self.efficiency.run_interaction(eff_prompt)
 
-                # Treat review as FAILED only when the assistant gives an
-                # explicit block / reject marker. A mere occurrence of the
-                # word “fail” in prose should not veto the patch.
-                _block_tokens = ("[[fail]]", "block", "rejected", "❌", "do not merge")
-                eff_pass = not any(tok in eff_raw.lower() for tok in _block_tokens)
+                    _block_tokens = ("[[fail]]", "rejected", "❌", "do not merge")
+                    eff_pass = not any(tok in eff_raw.lower() for tok in _block_tokens)
 
             # Record flag for downstream phase-guards
             if eff_pass and hasattr(self.shell, "_mark_phase") and task.get("id"):

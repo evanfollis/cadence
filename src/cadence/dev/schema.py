@@ -28,3 +28,17 @@ CHANGE_SET_V1 = {
         },
     },
 }
+
+# --------------------------------------------------------------------------- #
+# Efficiency-Agent structured verdict
+# --------------------------------------------------------------------------- #
+EFFICIENCY_REVIEW_V1 = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "EfficiencyReview",
+    "type": "object",
+    "required": ["pass_review", "comments"],
+    "properties": {
+        "pass_review": {"type": "boolean"},
+        "comments":    {"type": "string"},
+    },
+}

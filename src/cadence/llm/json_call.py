@@ -26,15 +26,31 @@ _MAX_RETRIES = 3
 
 
 class LLMJsonCaller:
-    def __init__(self, *, schema: Dict = CHANGE_SET_V1, model: str | None = None):
+    """
+    Generic wrapper: validate any JSON object returned via the OpenAI
+    *function-calling* pathway.
+
+    Parameters
+    ----------
+    schema        – Draft-07 JSON-schema the assistant must satisfy.
+    function_name – Name exposed to the OpenAI tools array (defaults to
+                    “create_change_set” for backward-compat).
+    """
+    def __init__(
+        self,
+        *,
+        schema: Dict = CHANGE_SET_V1,
+        function_name: str = "create_change_set",
+        model: str | None = None,
+    ):
         self.schema = schema
         self.model = model
         self.llm = get_default_client()
 
         self.func_spec = [
             {
-                "name": "create_change_set",
-                "description": "Return a ChangeSet that implements the blueprint",
+                "name": function_name,
+                "description": "Return an object that satisfies the supplied schema",
                 "parameters": self.schema,
             }
         ]
@@ -61,7 +77,9 @@ class LLMJsonCaller:
             try:
                 # resp may be str *or* dict (when tool-call path chosen)
                 obj = resp if isinstance(resp, dict) else _parse_json(resp)
-                obj = _normalise_legacy(obj)
+                # Change-set helper no-op for other schemas
+                if self.schema is CHANGE_SET_V1:
+                    obj = _normalise_legacy(obj)
                 jsonschema.validate(obj, self.schema)
                 return obj
 

@@ -19,6 +19,9 @@ from __future__ import annotations
 import functools
 from typing import Any, Callable, Tuple
 
+# Phase label constants
+PHASE_FAILURE_DIAGNOSE = "Failure-Diagnose"
+
 class PhaseOrderError(RuntimeError):
     """Raised when workflow phases are executed out of order."""
 
