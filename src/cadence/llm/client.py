@@ -8,6 +8,8 @@ from openai import AsyncOpenAI, OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from dotenv import load_dotenv
 import tiktoken
+import hashlib
+from cadence.audit.llm_call_log import LLMCallLogger
 
 # one-time env expansion
 load_dotenv()
@@ -152,12 +154,27 @@ class LLMClient:
         else:
             content = (response.choices[0].message.content or "").strip()
 
+        latency = time.perf_counter() - t0
+        completion_tokens = getattr(response.usage, "completion_tokens", None)
+
+        LLMCallLogger().log({
+            "ts": time.time(),
+            "agent_id": kwargs.get("agent_id", "n/a"),
+            "model": used_model,
+            "temperature": kwargs.get("temperature"),
+            "top_p": kwargs.get("top_p"),
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "latency_s": latency,
+            "result_sha": hashlib.sha1(content.encode()).hexdigest(),
+        })
+
         logger.info(
             "LLM call %s → %.2fs  prompt≈%d  completion≈%d",
             used_model,
-            time.perf_counter() - t0,
+            latency,
             prompt_tokens,
-            len(content) // 4,
+            completion_tokens,
         )
         return content
 
@@ -221,12 +238,27 @@ class LLMClient:
         else:
             content = (response.choices[0].message.content or "").strip()
 
+        latency = time.perf_counter() - t0
+        completion_tokens = getattr(response.usage, "completion_tokens", None)
+
+        LLMCallLogger().log({
+            "ts": time.time(),
+            "agent_id": kwargs.get("agent_id", "n/a"),
+            "model": used_model,
+            "temperature": kwargs.get("temperature"),
+            "top_p": kwargs.get("top_p"),
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "latency_s": latency,
+            "result_sha": hashlib.sha1(content.encode()).hexdigest(),
+        })
+
         logger.info(
             "LLM call %s → %.2fs  prompt≈%d  completion≈%d",
             used_model,
-            time.perf_counter() - t0,
+            latency,
             prompt_tokens,
-            len(content) // 4,
+            completion_tokens,
         )
         return content
 

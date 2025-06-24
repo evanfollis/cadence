@@ -71,6 +71,7 @@ class DevOrchestrator:
 
         # Agents -------------------------------------------------------------
         self.efficiency = get_agent("efficiency")
+        self.reasoning = get_agent("reasoning")
         # JSON caller for blueprint → ChangeSet generation
         self._cs_json = LLMJsonCaller(schema=CHANGE_SET_V1)  # function-call mode
         # If we’re on-line (not stub-mode) prepare a structured-JSON caller
@@ -131,10 +132,23 @@ class DevOrchestrator:
     # Back-log auto-replenishment
     # ------------------------------------------------------------------ #
     def _ensure_backlog(self, count: Optional[int] = None) -> None:
-        # 1️⃣  convert *all* open blueprints first
+        """
+        1)  Convert ANY high-level planning item ( blueprint | story | epic )
+            that does *not* yet contain concrete patch material into **one**
+            micro-task by delegating to _expand_blueprint().  After expansion
+            the parent task is archived so the backlog never presents a
+            non-executable item to the selector.
+
+        2)  If the backlog is still empty after the conversions, fall back to
+            automatic stub micro-task generation (old behaviour).
+        """
+
+        convertible = ("blueprint", "story", "epic")
         for bp in [
-            t for t in self.backlog.list_items("open")
-            if t.get("type") == "blueprint" and "change_set" not in t
+            t
+            for t in self.backlog.list_items("open")
+            if t.get("type") in convertible
+            and not any(k in t for k in ("change_set", "diff", "patch"))
         ]:
             created = self._expand_blueprint(bp)
             self.backlog.update_item(bp["id"], {"status": "archived"})
@@ -202,6 +216,13 @@ class DevOrchestrator:
         • auto-rollback on failure  
         • MetaAgent post-run analysis (non-blocking)  
         """
+        # Always start with an up-to-date context for every LLM agent
+        for ag in (self.efficiency, self.reasoning):          # extend when more live agents appear
+            try:
+                ag.reset_context()
+            except Exception:                  # noqa: BLE001 – never abort the run
+                pass
+
         self._ensure_backlog()
         rollback_patch: str | None = None
         task: dict | None = None
@@ -210,7 +231,14 @@ class DevOrchestrator:
         try:
             # 1️⃣  Select task ------------------------------------------------
             open_tasks = self.backlog.list_items("open")
-            if not open_tasks:
+
+            # Only tasks that *actually* contain patch material are executable
+            executable = [
+                t for t in open_tasks
+                if any(k in t for k in ("change_set", "diff", "patch"))
+            ]
+
+            if not executable:
                 raise RuntimeError("No open tasks in backlog.")
 
             if select_id:
@@ -218,11 +246,11 @@ class DevOrchestrator:
                 if not task:
                     raise RuntimeError(f"Task id '{select_id}' not found.")
             elif interactive:
-                print(self._format_backlog(open_tasks))
+                print(self._format_backlog(executable))
                 print("---")
-                task = open_tasks[self._prompt_pick(len(open_tasks))]
+                task = executable[self._prompt_pick(len(executable))]
             else:
-                task = open_tasks[0]
+                task = executable[0]
 
             print(f"\n[Selected task: {task['id'][:8]}] {task.get('title')}\n")
             self.shell.attach_task(task)  # allow ShellRunner to self-record

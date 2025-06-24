@@ -3,3 +3,11 @@
 archive
 code_payloads
 temp
+__pycache__/
+*.py[co]
+*.pyd
+*.so
+*.dylib
+*.egg-info/
+.build/
+.dist/

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from src.cadence.llm.client import LLMClient, get_default_client
 from src.cadence.context.provider import ContextProvider, SnapshotContextProvider
+from src.cadence.audit.agent_event_log import AgentEventLogger
 from .profile import AgentProfile
 
 
@@ -35,6 +36,15 @@ class BaseAgent:
         self.messages: List[Dict[str, Any]] = []
         self.reset_context()
 
+        # ---- audit logger  ---------------------------------------
+        _alog = AgentEventLogger()
+        self._agent_id = _alog.register_agent(
+            self.profile.name,
+            self.system_prompt or "",
+            context_digest=self._context_digest(),
+        )
+        self._alog = _alog
+
     # --------------------------------------------------------------------- #
     # Conversation helpers
     # --------------------------------------------------------------------- #
@@ -53,25 +63,57 @@ class BaseAgent:
     # --------------------------------------------------------------------- #
     def run_interaction(self, user_input: str, **llm_kwargs) -> str:
         self.append_message("user", user_input)
+        try:
+            self._alog.log_message(self._agent_id, "user", user_input)
+        except Exception:
+            pass
         response = self.llm_client.call(
             self.messages,
             model=self.profile.model,
             system_prompt=None,  # already injected
+            agent_id=self._agent_id,
             **llm_kwargs,
         )
         self.append_message("assistant", response)
+        try:
+            self._alog.log_message(self._agent_id, "assistant", response)
+        except Exception:
+            pass
         return response
 
     async def async_run_interaction(self, user_input: str, **llm_kwargs) -> str:
         self.append_message("user", user_input)
+        try:
+            self._alog.log_message(self._agent_id, "user", user_input)
+        except Exception:
+            pass
         response = await self.llm_client.acall(
             self.messages,
             model=self.profile.model,
             system_prompt=None,
+            agent_id=self._agent_id,
             **llm_kwargs,
         )
         self.append_message("assistant", response)
+        try:
+            self._alog.log_message(self._agent_id, "assistant", response)
+        except Exception:
+            pass
         return response
+    
+    # ---------------- internal helper -------------------------------
+    def _context_digest(self) -> str:
+        """
+        Quick SHA-1 fingerprint of the reference docs that were injected
+        on reset(); helps you prove later that the agent saw *fresh*
+        context when the conversation started.
+        """
+        import hashlib, json
+        if self.messages and self.messages[-1]["role"] == "user" \
+           and self.messages[-1]["content"].startswith("REFERENCE_DOCUMENTS:"):
+            payload = self.messages[-1]["content"]
+            return hashlib.sha1(payload.encode()).hexdigest()
+        return hashlib.sha1(json.dumps(self.messages[:1]).encode()).hexdigest()
 
     # --------------------------------------------------------------------- #
     # Persistence
@@ -89,9 +131,22 @@ class BaseAgent:
     # --------------------------------------------------------------------- #
     def gather_codebase_context(
         self,
-        root: Tuple[str, ...] = ("cadence", "docs"),
-        ext: Tuple[str, ...] = (".py", ".md", ".json", ".mermaid"),
+        root: Tuple[str, ...] | None = None,
+        ext: Tuple[str, ...] = (".py", ".md", ".json", ".mermaid", ".txt", ".yaml", ".yml"),
         **kwargs,
     ) -> str:
         """Return repo/docs snapshot via the injected ContextProvider."""
-        return self.context_provider.get_context(*(Path(r) for r in root), exts=ext, **kwargs)
+        # ---------- resolve roots -------------------------------------
+        # Prefer the real package path  src/cadence/  if it exists; fall back to
+        # legacy  cadence/  (used by older notebooks or when the repo is
+        # checked out directly inside PYTHONPATH).
+        if root is None:
+            candidates = ("src/cadence", "cadence", "docs", "tools", "scripts", "tests")
+        else:
+            candidates = root
+
+        paths = [Path(p) for p in candidates if Path(p).exists()]
+        if not paths:                       # nothing found → empty string
+            return ""
+
+        return self.context_provider.get_context(*paths, exts=ext, **kwargs)
