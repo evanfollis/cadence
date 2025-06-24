@@ -206,8 +206,13 @@ class DevOrchestrator:
                     "Review the diff below for best-practice, lint, and summarisation.\n"
                     f"DIFF:\n{patch}\n\nTASK CONTEXT:\n{task}"
                 )
-                eff_raw  = self.efficiency.run_interaction(eff_prompt)
-                eff_pass = "fail" not in eff_raw.lower() #and "pass" in eff_raw.lower()
+                eff_raw = self.efficiency.run_interaction(eff_prompt)
+
+                # Treat review as FAILED only when the assistant gives an
+                # explicit block / reject marker. A mere occurrence of the
+                # word “fail” in prose should not veto the patch.
+                _block_tokens = ("[[fail]]", "block", "rejected", "❌", "do not merge")
+                eff_pass = not any(tok in eff_raw.lower() for tok in _block_tokens)
 
             # Record flag for downstream phase-guards
             if eff_pass and hasattr(self.shell, "_mark_phase") and task.get("id"):

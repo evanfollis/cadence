@@ -58,7 +58,7 @@ class TaskExecutor:
             # 2. new ChangeSet path  ------------------------------------------
             if "change_set" in task:
                 cs_obj = ChangeSet.from_dict(task["change_set"])
-                return build_patch(cs_obj, self.src_root)
+                return build_patch(cs_obj, Path("."))
 
             # 3. legacy single-file diff dict  --------------------------------
             return self._build_one_file_diff(task)
