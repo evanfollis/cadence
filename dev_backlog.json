@@ -1,118 +1,206 @@
 [
   {
-    "id": "blueprint-2-rollback-shellrunner",
-    "title": "Add rollback() + dirty_repo flag to ShellRunner",
-    "type": "blueprint",
-    "status": "archived",
-    "created_at": "2025-06-24T00:00:00Z",
-    "description": "Enhance src/cadence/dev/shell.py: 1. Internal helper _git_apply_reverse(patch) (mirror of git_apply with -R). 2. Public def rollback(self, patch:str | None) -> bool which: \u2022 Returns True if reverse-apply succeeds. \u2022 On failure sets self.dirty_repo = True, records failed_rollback in TaskRecord, and returns False. 3. self.dirty_repo defaults to False on instantiation and after every successful git_commit. 4. Mark phase \u2018rollback_done\u2019 when rollback succeeds (optional)."
-  },
-  {
-    "id": "blueprint-2-dirty-guard-orchestrator",
-    "title": "Integrate dirty-repo guard in DevOrchestrator",
-    "type": "blueprint",
-    "status": "archived",
-    "created_at": "2025-06-24T00:00:00Z",
-    "description": "Edit src/cadence/dev/orchestrator.py: \u2022 At the very beginning of run_task_cycle, if self.shell.dirty_repo is True, log state blocked_dirty_repo and raise RuntimeError(\"Repository dirty after failed rollback\"). \u2022 Replace existing _attempt_rollback() logic with call to self.shell.rollback(rollback_patch). If it returns False, abort cycle early with success=False payload containing \"dirty_repo\": True."
-  },
-  {
-    "id": "blueprint-2-docs-rollback",
-    "title": "Document rollback & dirty-repo in DEV_PROCESS.md",
-    "type": "blueprint",
-    "status": "archived",
-    "created_at": "2025-06-24T00:00:00Z",
-    "description": "Add small ASCII flow diagram under Failure Handling in docs/DEV_PROCESS.md: `patch_apply \u2192 test_fail \u2192 rollback \u2192 [ok] | [rollback_fail \u2192 dirty_repo flag \u2192 block next loop]` Describe manual/unblock options for developers (e.g. git reset --hard then self.shell.dirty_repo=False). Ensure linter passes."
-  },
-  {
-    "id": "blueprint-2-test-rollback",
-    "title": "Strengthen test_failed_rollback.py",
-    "type": "blueprint",
-    "status": "archived",
-    "created_at": "2025-06-24T00:00:00Z",
-    "description": "Update or create tests/test_failed_rollback.py: 1. Create tmp repo with two commits. 2. Forge a ChangeSet that intentionally fails tests (e.g. syntax error). 3. Run orchestrator cycle; assert: result['success'] is False, result['stage'] == 'test', shell.dirty_repo is False. 4. Simulate rollback failure (e.g. corrupt patch) and assert dirty_repo is True and subsequent run_task_cycle immediately aborts with blocked_dirty_repo. Use pytest.raises."
-  },
-  {
-    "id": "c9649ee3-8306-4aaf-aa52-1036be5d830a",
-    "title": "Add rollback() + dirty_repo flag to ShellRunner",
+    "id": "fix-collect-code-syntax",
+    "title": "Repair tools/collect_code.py unlimited-byte option & restore tests",
     "type": "micro",
     "status": "open",
-    "created_at": "2025-06-25T03:21:01.031833+00:00",
+    "created_at": "2025-06-25T04:00:00Z",
+    "change_set": {
+      "message": "Replace placeholder code with proper implementation: --max-bytes 0 or omission means unlimited; signature unchanged elsewhere; keep DEFAULT_EXT list; keeps existing CLI flags; adds explicit note in help string; docstring adjusted.",
+      "edits": [
+        {
+          "path": "tools/collect_code.py",
+          "mode": "modify",
+          "after": "#!/usr/bin/env python3\nfrom __future__ import annotations\n\"\"\"\ncollect_code.py – Export Cadence source files to a single JSON payload.\n\nUsage\n-----\npython tools/collect_code.py \\\n       --root cadence src/cadence tools docs tests scripts \\\n       --ext .py .md .json .mermaid .txt \\\n       --out code_payload.json \\\n       --max-bytes 0           # 0 (or omit) = unlimited\n\nResult\n------\nJSON mapping   { \"relative/path/to/file\": \"UTF-8 text …\", … }\n\"\"\"\nimport argparse\nimport json\nimport sys\nfrom pathlib import Path\nfrom typing import List, Tuple, Dict\n\nDEFAULT_EXT: Tuple[str, ...] = (\".py\", \".md\", \".cfg\", \".toml\", \".ini\", \".json\", \".mermaid\", \".txt\")\n\n# ---------------------------------------------------------------------------\n# core\n# ---------------------------------------------------------------------------\n\ndef collect(\n    roots: List[Path],\n    files: List[Path] | None = None,\n    *,\n    extensions: Tuple[str, ...] = DEFAULT_EXT,\n    max_bytes: int | None = None,\n) -> Dict[str, str]:\n    \"\"\"Walk *roots* and return {relative_path: code_text}.\"\"\"\n    out: Dict[str, str] = {}\n    files = files or []\n    for root in roots:\n        for p in root.rglob(\"*\"):\n            if (\n                p.is_file()\n                and p.suffix in extensions\n                and \"__pycache__\" not in p.parts\n                and not any(part.startswith(\".\") for part in p.parts)\n            ):\n                if max_bytes is not None and max_bytes > 0 and p.stat().st_size > max_bytes:\n                    continue\n                out[str(p.relative_to(Path.cwd()))] = _read_text(p)\n    for f in files:\n        if f.is_file() and f.suffix in extensions:\n            if max_bytes is None or max_bytes <= 0 or f.stat().st_size <= max_bytes:\n                rel = str(f.relative_to(Path.cwd()))\n                out.setdefault(rel, _read_text(f))\n    return out\n\n\ndef _read_text(p: Path) -> str:\n    try:\n        return p.read_text(encoding=\"utf-8\")\n    except UnicodeDecodeError:\n        return p.read_text(encoding=\"utf-8\", errors=\"replace\")\n\n# ---------------------------------------------------------------------------\n# CLI helper\n# ---------------------------------------------------------------------------\n\ndef _parse_args(argv: List[str] | None = None) -> argparse.Namespace:\n    ap = argparse.ArgumentParser(description=\"Collect source files into JSON.\")\n    ap.add_argument(\"--root\", nargs=\"+\", default=[\"cadence\"], help=\"Directories to scan (repeatable).\")\n    ap.add_argument(\"--ext\", nargs=\"+\", default=list(DEFAULT_EXT), help=\"File extensions to include.\")\n    ap.add_argument(\n        \"--max-bytes\",\n        type=int,\n        default=0,\n        help=\"Skip files larger than this size (bytes). 0 or omission → unlimited.\",\n    )\n    ap.add_argument(\"--file\", nargs=\"+\", default=[], help=\"Individual files to include (repeatable).\")\n    ap.add_argument(\"--out\", default=\"-\", help=\"Output file path or '-' for stdout.\")\n    return ap.parse_args(argv)\n\n\ndef main(argv: List[str] | None = None) -> None:  # pragma: no cover\n    args = _parse_args(argv)\n    payload = collect(\n        [Path(r).resolve() for r in args.root],\n        files=[Path(f).resolve() for f in args.file],\n        extensions=tuple(args.ext),\n        max_bytes=None if args.max_bytes <= 0 else args.max_bytes,\n    )\n    if args.out == \"-\":\n        json.dump(payload, sys.stdout, indent=2, ensure_ascii=False)\n    else:\n        Path(args.out).write_text(json.dumps(payload, indent=2, ensure_ascii=False))\n        print(f\"Wrote {len(payload)} files → {args.out}\")\n\nif __name__ == \"__main__\":  # pragma: no cover\n    main()\n"
+        }
+      ]    
+    }
+  },
+  {
+    "id": "loop6-blueprint-collect-code",
+    "title": "Unlimited --max-bytes option in tools/collect_code.py",
+    "type": "blueprint",
+    "status": "archived",
+    "created_at": "2025-06-25T00:00:00Z",
+    "description": "Modify tools/collect_code.py so that --max-bytes 0 (or omission) means unlimited. Update help text and internal collect() guard accordingly."
+  },
+  {
+    "id": "loop6-blueprint-snapshot-provider",
+    "title": "SnapshotContextProvider passes max-bytes 0 + new roots/exts",
+    "type": "blueprint",
+    "status": "archived",
+    "created_at": "2025-06-25T00:00:00Z",
+    "description": "Update src/cadence/context/provider.py: always call collect_code.py with --max-bytes 0 and roots [src/cadence, tests, tools, docs, scripts] plus extensions [.py, .md, .json, .mermaid, .txt]."
+  },
+  {
+    "id": "loop6-blueprint-agent-injection",
+    "title": "Agents inject full repo snapshot on reset_context",
+    "type": "blueprint",
+    "status": "archived",
+    "created_at": "2025-06-25T00:00:00Z",
+    "description": "Edit agents/base.py gather_codebase_context default roots list; in agents/reasoning.py, sidekick.py, and execution.py ensure reset_context() appends the full snapshot string."
+  },
+  {
+    "id": "loop6-blueprint-disable-selector",
+    "title": "Retire context.token selector / cap",
+    "type": "blueprint",
+    "status": "archived",
+    "created_at": "2025-06-25T00:00:00Z",
+    "description": "Either delete src/cadence/context/select.py or set max_tokens=None so no pruning occurs; ensure no imports of select_context remain."
+  },
+  {
+    "id": "loop6-blueprint-docs",
+    "title": "Document unlimited context mode",
+    "type": "blueprint",
+    "status": "archived",
+    "created_at": "2025-06-25T00:00:00Z",
+    "description": "Add a section to docs/DEV_PROCESS.md explaining full-repo snapshot and how to re-enable size caps; update docs/Quick-start.md with collect_code --max-bytes guidance."
+  },
+  {
+    "id": "0529895e-5861-4952-bea1-910dc6c19159",
+    "title": "Unlimited --max-bytes option in tools/collect_code.py",
+    "type": "micro",
+    "status": "open",
+    "created_at": "2025-06-25T03:29:56.696189+00:00",
     "change_set": {
       "edits": [
         {
-          "path": "src/cadence/dev/shell.py",
+          "path": "tools/collect_code.py",
+          "after": "# ... (imports and other code)\nimport argparse\n\n# Existing parser setup\nparser = argparse.ArgumentParser(description='Collect code with optional max-bytes limit.')\nparser.add_argument('--max-bytes', type=int, default=0,\n    help='Maximum number of bytes to collect (0 for unlimited, omitting also means unlimited)')\n\n# Within your code collection logic\ndef collect(..., max_bytes=0, ...):\n    # When max_bytes is 0 or None, treat as unlimited\n    unlimited = (max_bytes == 0)\n    ...\n    if not unlimited:\n        # enforce max_bytes guard as before\n        if collected_bytes + chunk_size > max_bytes:\n            # handle limit reached\n            ...\n    # rest of collection code\n",
+          "before_sha": null,
+          "mode": "modify"
+        }
+      ],
+      "message": "Make --max-bytes unlimited when set to 0 or omitted in tools/collect_code.py. Update the help text and the internal collect() logic to reflect this behavior.",
+      "author": "",
+      "meta": {}
+    },
+    "parent_id": "loop6-blueprint-collect-code"
+  },
+  {
+    "id": "a8ab19a2-4feb-414f-9500-98f75eaf0bd7",
+    "title": "SnapshotContextProvider passes max-bytes 0 + new roots/exts",
+    "type": "micro",
+    "status": "open",
+    "created_at": "2025-06-25T03:30:02.629403+00:00",
+    "change_set": {
+      "edits": [
+        {
+          "path": "src/cadence/context/provider.py",
+          "after": "# ...other imports and code...\n\nCOLLECT_CODE_ROOTS = [\n    'src/cadence',\n    'tests',\n    'tools',\n    'docs',\n    'scripts',\n]\nCOLLECT_CODE_EXTS = ['.py', '.md', '.json', '.mermaid', '.txt']\n\n# ... within the method where collect_code.py is called ...\nsubprocess.run([\n    'python', 'collect_code.py',\n    '--max-bytes', '0',\n    '--roots', *COLLECT_CODE_ROOTS,\n    '--exts', *COLLECT_CODE_EXTS,\n    # ... any other args ...\n])\n# ...rest of the file...",
+          "before_sha": null,
+          "mode": "modify"
+        }
+      ],
+      "message": "Update collect_code.py call in SnapshotContextProvider to include --max-bytes 0, specified roots, and extensions.",
+      "author": "",
+      "meta": {}
+    },
+    "parent_id": "loop6-blueprint-snapshot-provider"
+  },
+  {
+    "id": "96215a66-2d78-446e-a88e-f9d73bfe4451",
+    "title": "Agents inject full repo snapshot on reset_context",
+    "type": "micro",
+    "status": "open",
+    "created_at": "2025-06-25T03:30:05.290602+00:00",
+    "change_set": {
+      "edits": [
+        {
+          "path": "agents/base.py",
+          "after": "# Edit: Update default roots argument in gather_codebase_context to include the full codebase or desired directories.\n",
+          "before_sha": null,
+          "mode": "modify"
+        },
+        {
+          "path": "agents/reasoning.py",
+          "after": "# Edit: In reset_context(), ensure code appends the full repo snapshot string to the context.\n",
+          "before_sha": null,
+          "mode": "modify"
+        },
+        {
+          "path": "agents/execution.py",
+          "after": "# Edit: In reset_context(), ensure code appends the full repo snapshot string to the context.\n",
+          "before_sha": null,
+          "mode": "modify"
+        },
+        {
+          "path": "agents/sidekick.py",
+          "after": "# Edit: In reset_context(), ensure code appends the full repo snapshot string to the context.\n",
+          "before_sha": null,
+          "mode": "modify"
+        }
+      ],
+      "message": "Update agents to inject full repo snapshot on reset_context and adjust default gather_codebase_context roots list.",
+      "author": "",
+      "meta": {}
+    },
+    "parent_id": "loop6-blueprint-agent-injection"
+  },
+  {
+    "id": "042ec0c6-9065-463d-9681-6662498c43b9",
+    "title": "Retire context.token selector / cap",
+    "type": "micro",
+    "status": "open",
+    "created_at": "2025-06-25T03:30:06.930501+00:00",
+    "change_set": {
+      "edits": [
+        {
+          "path": "src/cadence/context/select.py",
+          "after": null,
+          "before_sha": null,
+          "mode": "delete"
+        },
+        {
+          "path": "src/cadence/context/__init__.py",
+          "after": null,
+          "before_sha": null,
+          "mode": "modify"
+        },
+        {
+          "path": "src/cadence/agent/__init__.py",
+          "after": null,
+          "before_sha": null,
+          "mode": "modify"
+        },
+        {
+          "path": "src/cadence/agent/context.py",
           "after": null,
           "before_sha": null,
           "mode": "modify"
         }
       ],
-      "message": "Enhance ShellRunner in src/cadence/dev/shell.py: 1) Add _git_apply_reverse(patch) as internal helper (mirror of git_apply but uses -R); 2) Add public rollback(self, patch: str | None) -> bool: runs _git_apply_reverse, returns True if success, else sets self.dirty_repo = True, records failed_rollback in TaskRecord, returns False; 3) self.dirty_repo defaults to False at instantiation and after successful git_commit; 4) Optionally, mark phase 'rollback_done' if rollback succeeds.",
+      "message": "Retire context.token selector/cap by deleting src/cadence/context/select.py and removing all imports of select_context to eliminate token pruning.",
       "author": "",
       "meta": {}
     },
-    "parent_id": "blueprint-2-rollback-shellrunner"
+    "parent_id": "loop6-blueprint-disable-selector"
   },
   {
-    "id": "7b991de0-0e45-4f1e-94fc-fb32955b730b",
-    "title": "Integrate dirty-repo guard in DevOrchestrator",
+    "id": "3f68d88c-1467-4ed1-a18a-4742780c554a",
+    "title": "Document unlimited context mode",
     "type": "micro",
     "status": "open",
-    "created_at": "2025-06-25T03:21:04.915960+00:00",
-    "change_set": {
-      "edits": [
-        {
-          "path": "src/cadence/dev/orchestrator.py",
-          "after": "# ...\n# At the beginning of run_task_cycle, add dirty repo guard:\ndef run_task_cycle(self, *args, **kwargs):\n    # Dirty repo guard\n    if self.shell.dirty_repo:\n        self.log_state('blocked_dirty_repo')\n        raise RuntimeError(\"Repository dirty after failed rollback\")\n    # ... rest of run_task_cycle code ...\n    # Replace _attempt_rollback logic with shell.rollback(rollback_patch):\n    # Old code:\n    # success = self._attempt_rollback()\n    # if not success:\n    #     ... (handle failure)\n    # New code:\n    success = self.shell.rollback(rollback_patch)\n    if not success:\n        payload = {\"dirty_repo\": True}\n        # Other logic to abort early with success=False and payload\n        return {\"success\": False, **payload}\n    # ... rest of cycle\n",
-          "before_sha": null,
-          "mode": "modify"
-        }
-      ],
-      "message": "Integrate dirty-repo guard in DevOrchestrator:\n- In src/cadence/dev/orchestrator.py, at the start of run_task_cycle, if self.shell.dirty_repo is True, log state 'blocked_dirty_repo' and raise a RuntimeError.\n- Replace _attempt_rollback() logic with self.shell.rollback(rollback_patch), and if it returns False, abort cycle early with success=False and dirty_repo=True.",
-      "author": "",
-      "meta": {}
-    },
-    "parent_id": "blueprint-2-dirty-guard-orchestrator"
-  },
-  {
-    "id": "3223c9b7-7482-4dbb-a785-2a1496317631",
-    "title": "Document rollback & dirty-repo in DEV_PROCESS.md",
-    "type": "micro",
-    "status": "open",
-    "created_at": "2025-06-25T03:21:11.778967+00:00",
+    "created_at": "2025-06-25T03:30:12.869433+00:00",
     "change_set": {
       "edits": [
         {
           "path": "docs/DEV_PROCESS.md",
-          "after": "## Failure Handling\n\nWhen patches fail to apply cleanly or tests fail, the following process occurs:\n\n```\npatch_apply \u2192 test_fail \u2192 rollback \u2192 [ok]\n                          \u2502\n                          \u2514\u2500\u2500 [rollback_fail \u2192 dirty_repo flag \u2192 block next loop]\n```\n\n- If rollback succeeds ([ok]), the process may continue.\n- If rollback fails, a `dirty_repo` flag is set, preventing further automated actions until resolved.\n\n### Unblocking a Dirty Repository\nTo unblock development after a dirty repo:\n\n1. Manually reset the repository:\n   ```\n   git reset --hard\n   ```\n2. In Python, clear the dirty repo flag:\n   ```python\n   self.shell.dirty_repo = False\n   ```\n\nYou can now proceed with new patches or test cycles.\n",
+          "after": "## Unlimited Context Mode: Full-Repo Snapshot\n\nIn unlimited context mode, the codebase is ingested in its entirety (a full-repo snapshot), bypassing per-project or per-file size limitations. This means all source files are considered when building context for downstream tasks, regardless of size.\n\n### Re-enabling Size Caps\n\nTo restore previous size restrictions, adjust the configuration to set appropriate max-bytes values for code collection tasks (for example, in your pipeline or CLI commands). Consult the Quick-start guide for parameter details.",
           "before_sha": null,
           "mode": "modify"
-        }
-      ],
-      "message": "Document process for rollback and dirty-repo handling after patch application failure.\n\n- Add an ASCII flow diagram under Failure Handling in docs/DEV_PROCESS.md outlining rollback and dirty_repo logic.\n- Explain manual/unblock steps for developers (e.g. git reset --hard, updating self.shell.dirty_repo=False).\n- Ensure style aligns with linter requirements.",
-      "author": "",
-      "meta": {}
-    },
-    "parent_id": "blueprint-2-docs-rollback"
-  },
-  {
-    "id": "a1598bf0-e0a6-41de-b744-0d58112b8181",
-    "title": "Strengthen test_failed_rollback.py",
-    "type": "micro",
-    "status": "open",
-    "created_at": "2025-06-25T03:21:21.305198+00:00",
-    "change_set": {
-      "edits": [
+        },
         {
-          "path": "tests/test_failed_rollback.py",
-          "after": "import os\nimport pytest\nfrom orchestrator import run_task_cycle, Orchestrator, Shell\nfrom changeset import ChangeSet\n# Add any additional imports needed\n\n@pytest.fixture\ndef tmp_git_repo(tmp_path):\n    from git import Repo\n    repo_dir = tmp_path / \"repo\"\n    repo_dir.mkdir()\n    repo = Repo.init(str(repo_dir))\n    test_file = repo_dir / \"test.txt\"\n    test_file.write_text(\"initial content\\n\")\n    repo.index.add([str(test_file)])\n    repo.index.commit(\"initial commit\")\n    test_file.write_text(\"second content\\n\")\n    repo.index.add([str(test_file)])\n    repo.index.commit(\"second commit\")\n    return repo, repo_dir\n\ndef test_failed_rollback_logic(tmp_git_repo):\n    repo, repo_dir = tmp_git_repo\n    shell = Shell(cwd=str(repo_dir))\n    orchestrator = Orchestrator(shell=shell)\n    # Forge a ChangeSet that will fail tests (e.g., introduce syntax error)\n    changeset = ChangeSet(\n        message=\"break test\",\n        edits=[{\n            \"path\": \"broken.py\",\n            \"mode\": \"add\",\n            \"after\": \"def broken(:\\n    pass\\n\"\n        }]\n    )\n    # Apply ChangeSet, which should introduce an error\n    result = orchestrator.run_cycle([changeset])\n    assert result['success'] is False\n    assert result['stage'] == 'test'\n    assert shell.dirty_repo is False\n    # Corrupt the patch or make rollback fail on purpose\n    # For example, delete .git directory to simulate unrecoverable rollback\n    import shutil\n    shutil.rmtree(os.path.join(str(repo_dir), '.git'))\n    # Re-apply the changeset, should fail rollback and mark repo as dirty\n    with pytest.raises(Exception) as excinfo:\n        orchestrator.run_task_cycle([changeset])\n    assert getattr(shell, 'dirty_repo', False) is True\n    assert 'blocked_dirty_repo' in str(excinfo.value)\n",
+          "path": "docs/Quick-start.md",
+          "after": "...\n\n### Limiting Collected Code Size\n\nYou can control the maximum code context included by using the `--max-bytes` option with `collect_code`. For example:\n\n```\ncollect_code --max-bytes 1000000\n```\n\nOmitting this flag removes size limitations, resulting in a full-repo snapshot.\n",
           "before_sha": null,
           "mode": "modify"
         }
       ],
-      "message": "Strengthen tests/test_failed_rollback.py with a test that: (1) creates a tmp repo and two commits, (2) forges a ChangeSet with a test-breaking error, (3) runs an orchestrator cycle and asserts test failure, dirty_repo handling, and (4) simulates a corrupt rollback and checks appropriate abort and exception with pytest.raises.",
+      "message": "Document unlimited context mode by adding a section to docs/DEV_PROCESS.md explaining full-repo snapshot and size cap re-enabling, and updating docs/Quick-start.md with collect_code --max-bytes guidance.",
       "author": "",
       "meta": {}
     },
-    "parent_id": "blueprint-2-test-rollback"
+    "parent_id": "loop6-blueprint-docs"
   }
 ]

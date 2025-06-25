@@ -1,0 +1,6 @@
+{"ts": 1750822487.639699, "event": "agent_init", "agent": "efficiency-180b8b6d", "profile": "efficiency", "context_digest": "97d170e1550eee4afc0af065b78cda302a97674c", "system_prompt": ""}
+{"ts": 1750822487.6639192, "event": "agent_init", "agent": "reasoning-719829bc", "profile": "reasoning", "context_digest": "c5cd964a7e9213f0077167c8c449049055e8b175", "system_prompt": ""}
+{"ts": 1750822487.9807749, "event": "agent_init", "agent": "efficiency-15182738", "profile": "efficiency", "context_digest": "97d170e1550eee4afc0af065b78cda302a97674c", "system_prompt": ""}
+{"ts": 1750822488.004066, "event": "agent_init", "agent": "reasoning-5edf91df", "profile": "reasoning", "context_digest": "c5cd964a7e9213f0077167c8c449049055e8b175", "system_prompt": ""}
+{"ts": 1750822488.245822, "event": "agent_init", "agent": "efficiency-bfbb5892", "profile": "efficiency", "context_digest": "97d170e1550eee4afc0af065b78cda302a97674c", "system_prompt": ""}
+{"ts": 1750822488.269224, "event": "agent_init", "agent": "reasoning-daaec8f4", "profile": "reasoning", "context_digest": "c5cd964a7e9213f0077167c8c449049055e8b175", "system_prompt": ""}
