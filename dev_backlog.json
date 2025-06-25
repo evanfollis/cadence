@@ -43,7 +43,7 @@
     "id": "0a6b9569-bdb7-470e-a5d5-84a3d8e633ac",
     "title": "Create cross-process FileMutex helper",
     "type": "micro",
-    "status": "open",
+    "status": "archived",
     "created_at": "2025-06-25T02:32:08.873143+00:00",
     "change_set": {
       "edits": [

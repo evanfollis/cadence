@@ -45,7 +45,7 @@ def collect(
                 and "__pycache__" not in path.parts
                 and not any(p.startswith(".") for p in path.parts)
             ):
-                if max_bytes and path.stat().st_size > max_bytes:
+                if max_bytes is not None and path.stat().st_size > max_bytes:
                     continue
                 try:
                     text = path.read_text(encoding="utf-8")
@@ -85,8 +85,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--max-bytes",
         type=int,
-        default=50000,
-        help="Skip files larger than this size (bytes).",
+        default=0,
+        help="Skip files larger than this size (bytes). "
+              "Use 0 or a negative number for *no* size limit.",
     )
     p.add_argument(
         "--out",
@@ -105,11 +106,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> None:  # pragma: no cover
     args = parse_args(argv)
+    max_b = None if args.max_bytes <= 0 else args.max_bytes
     payload = collect(
         [Path(r).resolve() for r in args.root],
         files=[Path(f).resolve() for f in args.file],
         extensions=tuple(args.ext),
-        max_bytes=args.max_bytes,
+        max_bytes=max_b,
     )
     if args.out == "-":
         json.dump(payload, sys.stdout, indent=2, ensure_ascii=False)

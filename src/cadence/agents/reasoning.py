@@ -16,8 +16,5 @@ class ReasoningAgent(BaseAgent):
     # Automatically inject a fresh code snapshot on each reset
     def reset_context(self, system_prompt: str | None = None):
         super().reset_context(system_prompt)
-        docs = self.gather_codebase_context(
-            root=("docs",),
-            ext=(".md", ".mermaid", ".json"),
-        )
-        self.append_message("user", f"REFERENCE_DOCUMENTS:\n{docs}\n---\nYou are cleared for deep reasoning.")
+        snapshot = self.gather_codebase_context()
+        self.append_message("user", f"REFERENCE_DOCUMENTS:\n{snapshot}\n---\nYou are cleared for deep reasoning.")

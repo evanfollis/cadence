@@ -141,7 +141,7 @@ class BaseAgent:
         # legacy  cadence/  (used by older notebooks or when the repo is
         # checked out directly inside PYTHONPATH).
         if root is None:
-            candidates = ("src/cadence", "cadence", "docs", "tools", "scripts", "tests")
+            candidates = ("src/cadence", "tests", "tools", "docs", "scripts")
         else:
             candidates = root
 

@@ -53,17 +53,6 @@ class Sidekick:
     # Private helpers
     # ------------------------------------------------------------------ #
     def _inject_seed_context(self):
-        docs = self._agent.gather_codebase_context(
-            root=("docs",),
-            ext=(".md", ".mermaid", ".json"),
-        )
-
-        modules_path = Path("agent_context/module_contexts.json")
-        modules = {}
-        if modules_path.exists():
-            modules = json.loads(modules_path.read_text())
-
-        self._agent.append_message(
-            "user",
-            f"DOCS:\n{docs}\n---\nMODULE_CONTEXTS:\n{json.dumps(modules)[:10_000]}",
-        )
+        super().reset_context(system_prompt)
+        snapshot = self.gather_codebase_context()
+        self.append_message("user", f"REFERENCE_DOCUMENTS:\\n{snapshot}\\n---\\nYou are cleared for deep reasoning.")

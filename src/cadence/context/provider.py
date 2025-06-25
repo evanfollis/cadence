@@ -7,8 +7,11 @@ class ContextProvider(ABC):
     def get_context(self, *roots: Path, exts=(".py", ".md")) -> str: ...
 class SnapshotContextProvider(ContextProvider):
     def get_context(self, *roots, exts=(".py", ".md"), out="-") -> str:
-        args = [sys.executable, "tools/collect_code.py"]
-        for r in roots: args += ["--root", str(r)]
-        for e in exts:  args += ["--ext", e]
-        args += ["--out", out]
+        args = [
+            sys.executable, "tools/collect_code.py",
+            "--max-bytes", "0",
+            "--root", *[str(r) for r in roots],        # all roots in one group
+            "--ext",  *exts,                           # all extensions in one group
+            "--out",  out,
+        ]
         return subprocess.run(args, capture_output=True, text=True, check=True).stdout
