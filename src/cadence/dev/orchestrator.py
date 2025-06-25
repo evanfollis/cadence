@@ -38,6 +38,7 @@ from .shell import ShellRunner, ShellCommandError
 from cadence.llm.json_call import LLMJsonCaller
 from cadence.dev.schema import CHANGE_SET_V1, EFFICIENCY_REVIEW_V1
 from cadence.context.provider import SnapshotContextProvider
+from .failure_responder import FailureResponder
 
 # --------------------------------------------------------------------------- #
 # Meta-governance stub
@@ -69,6 +70,7 @@ class DevOrchestrator:
         self.shell = ShellRunner(config["repo_dir"], task_record=self.record)
         self.executor = TaskExecutor(config["src_root"])
         self.reviewer = TaskReviewer(config.get("ruleset_file"))
+        self.failure_responder = FailureResponder(config.get("backlog_path","dev_backlog.json"))
 
         # Agents -------------------------------------------------------------
         self.efficiency = get_agent("efficiency")
@@ -279,17 +281,60 @@ class DevOrchestrator:
                 self._record(task, "failed_branch_isolation", {"error": str(ex)})
                 return {"success": False, "stage": "branch_isolation", "error": str(ex)}
 
-            # 2️⃣  Build patch -----------------------------------------------
+            # ── 2️⃣  Build patch ─────────────────────────────────────────────
             self._record(task, "build_patch")
             try:
                 patch = self.executor.build_patch(task)
-                rollback_patch = patch
-                self._record(task, "patch_built", {"patch": patch})
-                print("--- Patch built ---\n", patch)
-            except (PatchBuildError, TaskExecutorError) as ex:
+
+            except TaskExecutorError as ex:
+                msg = str(ex).lower()
+
+                # graceful-exit: empty diff  → mark done
+                if "empty diff" in msg:
+                    self.backlog.update_item(task["id"], {"status": "done"})
+                    self.backlog.archive_completed()
+                    self._record(task, "no_op_change", {"detail": str(ex)})
+                    print("[ℹ] No changes needed – task auto-closed.")
+                    return {
+                        "success": True,
+                        "stage": "no_op_change",
+                        "task_id": task["id"],
+                    }
+
+                # change-set malformed  → block + fail
+                if "after" in msg and "mode=modify" in msg:
+                    self.backlog.update_item(task["id"], {"status": "blocked"})
+                    self._record(task, "invalid_change_set", {"error": str(ex)})
+                    print(f"[X] Invalid ChangeSet: {ex}")
+                    return {
+                        "success": False,
+                        "stage": "change_set_validation",
+                        "error": str(ex),
+                    }
+
+                # otherwise fail hard
                 self._record(task, "failed_build_patch", {"error": str(ex)})
                 print(f"[X] Patch build failed: {ex}")
-                return {"success": False, "stage": "build_patch", "error": str(ex)}
+                return {
+                    "success": False,
+                    "stage": "build_patch",
+                    "error": str(ex),
+                }
+
+            except PatchBuildError as ex:
+                self._record(task, "failed_build_patch", {"error": str(ex)})
+                print(f"[X] Patch build failed: {ex}")
+                return {
+                    "success": False,
+                    "stage": "build_patch",
+                    "error": str(ex),
+                }
+
+            # success path
+            rollback_patch = patch
+            self._record(task, "patch_built", {"patch": patch})
+            print("--- Patch built ---\n", patch)
+
 
             # 3️⃣  Review #1 – Reasoning ------------------------------------
             review1 = self.reviewer.review_patch(patch, context=task)
@@ -446,26 +491,43 @@ class DevOrchestrator:
                     print(f"[MetaAgent-Error] {meta_ex}", file=sys.stderr)
 
     # ------------------------------------------------------------------ #
-    # Rollback helper
+    # Rollback helper – always records the outcome
     # ------------------------------------------------------------------ #
     def _attempt_rollback(
-        self, task: dict, patch: str | None, *, src_stage: str, quiet: bool = False
-    ):
-        if not patch:
-            self._record(task, "rollback_skip_no_patch")
-            return
+        self,
+        task: dict,
+        patch: str | None,
+        *,
+        src_stage: str,
+        quiet: bool = False,
+    ) -> None:
+        """
+        Revert the working tree to its pristine state after a failure in
+        *src_stage*.  All outcomes are persisted to TaskRecord so the
+        integration test can assert `"rollback_succeeded"` is present.
+        """
+        self._record(task, "rollback_started", {"from_stage": src_stage})
+
         try:
-            self.shell.git_apply(patch, reverse=True)
-            self._record(task, f"failed_{src_stage}_and_rollback")
+            # Unstage & discard everything – no commit exists yet
+            self.shell.git_reset_hard("HEAD")
+            self._record(task, "rollback_succeeded")
             if not quiet:
                 print("[↩] Rollback successful – working tree restored.")
-        except ShellCommandError as rb_ex:
-            self._record(
-                task,
-                "critical_rollback_failure",
-                {"trigger": src_stage, "rollback_error": str(rb_ex)},
-            )
-            print(f"[!!] Rollback FAILED – manual fix required: {rb_ex}")
+
+        except ShellCommandError as ex:
+            self._record(task, "rollback_failed", {"error": str(ex)})
+            if not quiet:
+                print(f"[X] Rollback FAILED: {ex}")
+            if not quiet:
+                raise
+
+        # 🌱 auto-generate follow-up remediation tasks
+        try:
+            self.failure_responder.handle_failure(task, src_stage)
+        except Exception as fr_exc:               # never abort the cycle
+            print(f"[FailureResponder-Error] {fr_exc}", file=sys.stderr)
+
 
     # ------------------------------------------------------------------ #
     # CLI helpers

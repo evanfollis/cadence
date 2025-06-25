@@ -130,6 +130,13 @@ class LLMClient:
                 }
             }
 
+        # ----------------------------------------------------------------
+        # Strip Cadence-internal kwargs that the OpenAI SDK does not accept.
+        # (agent_id is used only by our audit log.)
+        # ----------------------------------------------------------------
+        safe_kwargs = dict(kwargs)
+        safe_kwargs.pop("agent_id", None)
+
         response = self._sync_client.chat.completions.create(  # type: ignore[arg-type]
             model=used_model,
             messages=cast(List[ChatCompletionMessageParam], msgs),
@@ -139,7 +146,7 @@ class LLMClient:
             ),
             tools=tools_arg,
             tool_choice=tool_choice_arg,
-            **kwargs,
+            **safe_kwargs,
         )
 
         # ------------------------------------------------------------ #
@@ -214,6 +221,13 @@ class LLMClient:
                 }
             }
 
+        # ----------------------------------------------------------------
+        # Strip Cadence-internal kwargs that the OpenAI SDK does not accept.
+        # (agent_id is used only by our audit log.)
+        # ----------------------------------------------------------------
+        safe_kwargs = dict(kwargs)
+        safe_kwargs.pop("agent_id", None)
+
         response = await self._async_client.chat.completions.create(  # type: ignore[arg-type]
             model=used_model,
             messages=cast(List[ChatCompletionMessageParam], msgs),
@@ -223,7 +237,7 @@ class LLMClient:
             ),
             tools=tools_arg,
             tool_choice=tool_choice_arg,
-            **kwargs,
+            **safe_kwargs,
         )
 
         # ------------------------------------------------------------ #

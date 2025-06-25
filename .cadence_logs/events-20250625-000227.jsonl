@@ -1,0 +1,9 @@
+{"ts": 1750827747.950764, "event": "agent_init", "agent": "reasoning-b28b19a4", "profile": "reasoning", "context_digest": "119dae613748ceceac19bd518f8093658354de54", "system_prompt": ""}
+{"ts": 1750827747.951046, "event": "agent_init", "agent": "efficiency-5b4931b6", "profile": "efficiency", "context_digest": "97d170e1550eee4afc0af065b78cda302a97674c", "system_prompt": ""}
+{"ts": 1750827747.973567, "event": "agent_init", "agent": "reasoning-e0a5cfe6", "profile": "reasoning", "context_digest": "119dae613748ceceac19bd518f8093658354de54", "system_prompt": ""}
+{"ts": 1750827749.991841, "event": "agent_init", "agent": "reasoning-708b69a3", "profile": "reasoning", "context_digest": "119dae613748ceceac19bd518f8093658354de54", "system_prompt": ""}
+{"ts": 1750827749.992092, "event": "agent_init", "agent": "efficiency-2c9864da", "profile": "efficiency", "context_digest": "97d170e1550eee4afc0af065b78cda302a97674c", "system_prompt": ""}
+{"ts": 1750827750.0150368, "event": "agent_init", "agent": "reasoning-2bec345b", "profile": "reasoning", "context_digest": "119dae613748ceceac19bd518f8093658354de54", "system_prompt": ""}
+{"ts": 1750827752.516041, "event": "agent_init", "agent": "reasoning-8363e015", "profile": "reasoning", "context_digest": "119dae613748ceceac19bd518f8093658354de54", "system_prompt": ""}
+{"ts": 1750827752.516294, "event": "agent_init", "agent": "efficiency-e51534d1", "profile": "efficiency", "context_digest": "97d170e1550eee4afc0af065b78cda302a97674c", "system_prompt": ""}
+{"ts": 1750827752.5391612, "event": "agent_init", "agent": "reasoning-a8e98d2f", "profile": "reasoning", "context_digest": "119dae613748ceceac19bd518f8093658354de54", "system_prompt": ""}

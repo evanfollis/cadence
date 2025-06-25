@@ -4,9 +4,9 @@ from __future__ import annotations
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 
-from src.cadence.llm.client import LLMClient, get_default_client
-from src.cadence.context.provider import ContextProvider, SnapshotContextProvider
-from src.cadence.audit.agent_event_log import AgentEventLogger
+from cadence.llm.client import LLMClient, get_default_client
+from cadence.context.provider import ContextProvider, SnapshotContextProvider
+from cadence.audit.agent_event_log import AgentEventLogger
 from .profile import AgentProfile
 
 

@@ -1,0 +1,9 @@
+{"ts": 1750827890.9507132, "event": "agent_init", "agent": "reasoning-c49d8044", "profile": "reasoning", "context_digest": "b5bc955ea30ae3fcd655a8261d26878b7976164f", "system_prompt": ""}
+{"ts": 1750827890.9510221, "event": "agent_init", "agent": "efficiency-fd0ecb69", "profile": "efficiency", "context_digest": "97d170e1550eee4afc0af065b78cda302a97674c", "system_prompt": ""}
+{"ts": 1750827890.9735968, "event": "agent_init", "agent": "reasoning-bec7bcbf", "profile": "reasoning", "context_digest": "b5bc955ea30ae3fcd655a8261d26878b7976164f", "system_prompt": ""}
+{"ts": 1750827892.94425, "event": "agent_init", "agent": "reasoning-d9ce8da4", "profile": "reasoning", "context_digest": "b5bc955ea30ae3fcd655a8261d26878b7976164f", "system_prompt": ""}
+{"ts": 1750827892.944552, "event": "agent_init", "agent": "efficiency-25f6aba2", "profile": "efficiency", "context_digest": "97d170e1550eee4afc0af065b78cda302a97674c", "system_prompt": ""}
+{"ts": 1750827892.967881, "event": "agent_init", "agent": "reasoning-3ffb4c80", "profile": "reasoning", "context_digest": "b5bc955ea30ae3fcd655a8261d26878b7976164f", "system_prompt": ""}
+{"ts": 1750827895.4541702, "event": "agent_init", "agent": "reasoning-b201e29d", "profile": "reasoning", "context_digest": "b5bc955ea30ae3fcd655a8261d26878b7976164f", "system_prompt": ""}
+{"ts": 1750827895.454429, "event": "agent_init", "agent": "efficiency-ce7866d2", "profile": "efficiency", "context_digest": "97d170e1550eee4afc0af065b78cda302a97674c", "system_prompt": ""}
+{"ts": 1750827895.47708, "event": "agent_init", "agent": "reasoning-e6cacd31", "profile": "reasoning", "context_digest": "b5bc955ea30ae3fcd655a8261d26878b7976164f", "system_prompt": ""}

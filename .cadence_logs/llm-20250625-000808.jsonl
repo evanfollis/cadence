@@ -1,0 +1,2 @@
+{"ts": 1750828088.924681, "agent_id": "n/a", "model": "gpt-4.1", "temperature": null, "top_p": null, "prompt_tokens": 191, "completion_tokens": 58, "latency_s": 1.753639665999799, "result_sha": "3567470318541b81b72129d52b5567524967d1ad"}
+{"ts": 1750828090.468351, "agent_id": "n/a", "model": "gpt-4.1", "temperature": null, "top_p": null, "prompt_tokens": 208, "completion_tokens": 51, "latency_s": 1.2717048329941463, "result_sha": "8ccb8933d1da70d937da015f83652066a075f733"}

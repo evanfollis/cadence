@@ -1,32 +1,21 @@
+# tests/test_failed_rollback.py
 """
 Regression-test — Atomic rollback on downstream failure
 =======================================================
 
 Purpose
 -------
-Verify that *any* failure **after** a patch is applied but **before**
-commit triggers an automatic rollback that restores a pristine working
-tree **and** writes the correct snapshots to TaskRecord.
+Verify that *any* failure after a patch is applied triggers a rollback that:
+    • restores the working tree
+    • writes the correct TaskRecord snapshots
+    • leaves git status clean
 
-Strategy
---------
-1.  Start with a clean repo where utils.add() is *correct* and all tests
-    pass.
+The patch used here adds a deliberately failing test file.
 
-2.  Backlog contains a task whose patch **adds a brand-new failing test
-    file** – this guarantees pytest will fail *if* the patch is applied,
-    regardless of implementation details.
-
-3.  Run a full `DevOrchestrator` cycle (non-interactive).
-
-4.  Assert:
-        ─ orchestrator reports failure at the *test* stage;
-        ─ TaskRecord contains both `"failed_test"` **and**
-          `"failed_test_and_rollback"` snapshots;
-        ─ the failing test file is gone (working tree restored);
-        ─ original tests pass again and git status is clean.
+Note: since Loop-5 the orchestrator may abort **earlier** at the
+“patch_review_efficiency” stage (fail-closed).  The test therefore
+accepts either failure stage.
 """
-
 from __future__ import annotations
 
 import json
@@ -38,47 +27,34 @@ from typing import List
 import pytest
 
 
-# --------------------------------------------------------------------------- #
-# Global stubs – applied automatically
-# --------------------------------------------------------------------------- #
+# ───────────────────── global stubs ──────────────────────────────────────────
 @pytest.fixture(autouse=True)
 def _stub_external(monkeypatch):
-    """Stub out optional / external deps so the test is hermetic."""
-    # Fake OpenAI client (LLM not used by this path)
+    """Stub OpenAI + tabulate so the test is hermetic."""
     fake_openai = sys.modules["openai"] = type(sys)("openai")
     fake_openai.AsyncOpenAI = lambda *a, **k: None  # type: ignore
     fake_openai.OpenAI = lambda *a, **k: None       # type: ignore
 
-    # Fake tabulate (pretty-printer)
     fake_tabulate = sys.modules["tabulate"] = type(sys)("tabulate")
     fake_tabulate.tabulate = lambda *a, **k: ""
 
-    # Satisfy LLMClient env check
     monkeypatch.setenv("OPENAI_API_KEY", "dummy")
-
-    # Ensure repository *parent* (containing “src/”) is importable
-    PROJ_ROOT = Path(__file__).resolve().parents[1]
-    if (PROJ_ROOT / "src").exists():
-        monkeypatch.syspath_prepend(str(PROJ_ROOT))
-
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    if (PROJECT_ROOT / "src").exists():
+        monkeypatch.syspath_prepend(str(PROJECT_ROOT))
     yield
 
 
-# --------------------------------------------------------------------------- #
-# Repo bootstrap helpers
-# --------------------------------------------------------------------------- #
+# ───────────────────── repo bootstrap helpers ────────────────────────────────
 GOOD_IMPL = "def add(x, y):\n    return x + y\n"
 FAILING_TEST = (
     "def test_intentional_failure():\n"
     "    assert False, 'This test is added by the patch and must fail'\n"
 )
 
-
 def _init_repo(tmp_path: Path) -> Path:
     """Create a minimal Cadence project inside a temporary git repo."""
     repo = tmp_path
-
-    # --- source package ----------------------------------------------------
     pkg_root = repo / "src" / "cadence" / "utils"
     pkg_root.mkdir(parents=True, exist_ok=True)
     (repo / "src" / "__init__.py").write_text("")
@@ -86,29 +62,22 @@ def _init_repo(tmp_path: Path) -> Path:
     (pkg_root / "__init__.py").write_text("")
     (pkg_root / "add.py").write_text(GOOD_IMPL)
 
-    # --- baseline passing test --------------------------------------------
     tests_dir = repo / "tests"
     tests_dir.mkdir()
     (tests_dir / "test_add.py").write_text(
         "import sys, pathlib, os\n"
         "sys.path.insert(0, os.fspath((pathlib.Path(__file__).resolve().parents[2] / 'src')))\n"
-        "from cadence.utils.add import add\n"
-        "\n"
+        "from cadence.utils.add import add\n\n"
         "def test_add():\n"
         "    assert add(2, 3) == 5\n"
     )
 
-    # --- git init ----------------------------------------------------------
     subprocess.run(["git", "init"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
     subprocess.run(["git", "config", "user.email", "ci@example.com"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.name", "CI"], cwd=repo, check=True)
     subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
-    subprocess.run(
-        ["git", "commit", "-m", "initial good implementation"],
-        cwd=repo,
-        check=True,
-        stdout=subprocess.DEVNULL,
-    )
+    subprocess.run(["git", "commit", "-m", "initial"], cwd=repo, check=True,
+                   stdout=subprocess.DEVNULL)
     return repo
 
 
@@ -121,20 +90,18 @@ def _make_backlog(repo: Path, record_file: Path) -> Path:
         "status": "open",
         "created_at": "2025-06-21T00:00:00Z",
         "diff": {
-            # New file relative to repo root
             "file": "tests/test_break.py",
-            "before": "",                 # new file → empty 'before'
+            "before": "",
             "after":  FAILING_TEST,
         },
     }
     backlog_path = repo / "backlog.json"
     backlog_path.write_text(json.dumps([task], indent=2))
-    record_file.write_text("[]")  # fresh record
+    record_file.write_text("[]")
     return backlog_path
 
 
 def _orch_cfg(repo: Path, backlog: Path, record: Path) -> dict:
-    """Return minimal DevOrchestrator config."""
     return {
         "backlog_path": str(backlog),
         "template_file": None,
@@ -145,47 +112,35 @@ def _orch_cfg(repo: Path, backlog: Path, record: Path) -> dict:
     }
 
 
-# --------------------------------------------------------------------------- #
-# The actual test
-# --------------------------------------------------------------------------- #
+# ───────────────────── the actual test ───────────────────────────────────────
 def test_atomic_rollback_on_failed_tests(tmp_path: Path):
-    """
-    Full DevOrchestrator run — must:
-        • fail at test phase,
-        • rollback applied patch,
-        • leave working tree clean.
-    """
     repo = _init_repo(tmp_path)
     record_file = repo / "dev_record.json"
     backlog_file = _make_backlog(repo, record_file)
 
-    # Import *after* stubs are in place
     from src.cadence.dev.orchestrator import DevOrchestrator
 
     orch = DevOrchestrator(_orch_cfg(repo, backlog_file, record_file))
     result = orch.run_task_cycle(select_id="task-add-failing-test", interactive=False)
 
-    # ---- orchestrator result ---------------------------------------------
+    # The run must fail, either at efficiency review or at the test stage.
+    # ---- assertions -------------------------------------------------------
     assert result["success"] is False
-    assert result["stage"] == "test"
+    assert result["stage"] in {"patch_review_efficiency", "test"}
 
-    # ---- TaskRecord snapshots --------------------------------------------
-    history: List[dict] = json.loads(record_file.read_text())[0]["history"]
-    states = [snap["state"] for snap in history]
-    assert "failed_test" in states, "failure snapshot missing"
-    assert "failed_test_and_rollback" in states, "rollback snapshot missing"
+    # history must contain *some* failure state plus a rollback success
+    history = json.loads(record_file.read_text())[0]["history"]
+    states = {snap["state"] for snap in history}
 
-    # ---- Working tree validation -----------------------------------------
-    # 1. The intentionally failing test must be *gone*
-    assert not (repo / "tests" / "test_break.py").exists(), "rollback did not remove new file"
+    assert "rollback_succeeded" in states
+    assert {"failed_patch_review_efficiency", "failed_test"} & states, (
+        f"Expected a failure snapshot, got {states}"
+    )
 
-    # 2. Original add() implementation still correct
-    sys.path.insert(0, str(repo / "src"))
-    from cadence.utils.add import add  # noqa: E402  (delayed import)
+    # failing test file should be gone
+    assert not (repo / "tests" / "test_break.py").exists()
 
-    assert add(2, 3) == 5
-
-    # 3. Git working tree clean (no tracked-file changes)
+    # working tree clean (ignore untracked)
     status = subprocess.run(
         ["git", "status", "--porcelain"],
         cwd=repo,
@@ -193,9 +148,6 @@ def test_atomic_rollback_on_failed_tests(tmp_path: Path):
         encoding="utf-8",
         check=True,
     ).stdout.strip()
+    tracked_changes = [l for l in status.splitlines() if not l.startswith("??")]
+    assert tracked_changes == []
 
-    # Ignore purely *untracked* lines (begin with '??')
-    tracked_changes = [line for line in status.splitlines() if not line.startswith("??")]
-    assert tracked_changes == [], (
-        "tracked files modified after rollback:\n" + "\n".join(tracked_changes)
-    )

@@ -1,0 +1,3 @@
+{"ts": 1750828080.817045, "event": "agent_init", "agent": "reasoning-42399f2b", "profile": "reasoning", "context_digest": "1f43b42ea57b0b41f7b8aecff814e11c3f57113b", "system_prompt": ""}
+{"ts": 1750828080.81743, "event": "agent_init", "agent": "efficiency-f58b6b4e", "profile": "efficiency", "context_digest": "97d170e1550eee4afc0af065b78cda302a97674c", "system_prompt": ""}
+{"ts": 1750828080.8402681, "event": "agent_init", "agent": "reasoning-18f78e24", "profile": "reasoning", "context_digest": "1f43b42ea57b0b41f7b8aecff814e11c3f57113b", "system_prompt": ""}

@@ -351,6 +351,21 @@ class ShellRunner:
                 )
                 raise
 
+    # ────────────────────────────────────────────────────────────────
+    # new helper – used by orchestrator rollback
+    # ────────────────────────────────────────────────────────────────
+    def git_reset_hard(self, ref: str = "HEAD") -> None:
+        """
+        Discard *all* local changes (tracked + untracked) and hard-reset to `ref`.
+        Raises ShellCommandError on failure so callers can decide to abort/continue.
+        """
+        try:
+            # 1) hard reset tracked files
+            self._run(["git", "reset", "--hard", ref])
+            # 2) clean untracked / ignored files
+            self._run(["git", "clean", "-fdx"])
+        except ShellCommandError:
+            raise        # bubble up unchanged – orchestrator will record
 
 # --------------------------------------------------------------------------- #
 # Dev-only sanity CLI

@@ -1,26 +1,33 @@
 # src/cadence/dev/executor.py
 """
 Cadence TaskExecutor
+--------------------
 
-Now consumes *structured* ChangeSets in addition to raw diffs.  Priority:
+Consumes *structured* ChangeSets in addition to raw diffs.  Priority:
 
-    1. task["patch"]         – already-built diff (legacy)
-    2. task["change_set"]    – **new preferred path**
-    3. task["diff"]          – legacy before/after dict (kept for tests)
+    1. task["patch"]      – already-built diff (legacy)
+    2. task["change_set"] – **preferred** structured path
+    3. task["diff"]       – legacy single-file before/after dict
 
-The method still returns a unified diff string so downstream ShellRunner /
-Reviewer require **zero** changes.
+Always returns a unified diff string ready for `git apply`, so downstream
+ShellRunner / Reviewer require **zero** changes.
+
+2025-07-01 update
+~~~~~~~~~~~~~~~~~
+*   Detect the “already applied” case: if a generated diff is empty the task
+    is considered a no-op.  We raise a `PatchBuildError("empty diff")`; the
+    orchestrator can interpret this to auto-close the task instead of failing
+    the cycle.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Dict, List, Any, Optional
 import difflib
-import os
+from pathlib import Path
+from typing import Any, Dict, List
 
 from .change_set import ChangeSet
-from .patch_builder import build_patch, PatchBuildError
+from .patch_builder import PatchBuildError, build_patch
 
 
 class TaskExecutorError(RuntimeError):
@@ -38,32 +45,39 @@ class TaskExecutor:
     # ------------------------------------------------------------------ #
     def build_patch(self, task: Dict[str, Any]) -> str:
         """
-        Return a unified diff string ready for `git apply`.
+        Build (or forward) a unified diff string.
 
         Accepted task keys (checked in this order):
 
-        • "patch"       – already-made diff → returned unchanged.
-        • "change_set"  – new structured format → converted via PatchBuilder.
-        • "diff"        – legacy single-file before/after dict.
+        • ``patch``       – already-made diff → returned unchanged.
+        • ``change_set``  – structured ChangeSet → converted via PatchBuilder.
+        • ``diff``        – legacy before/after dict.
 
-        Raises TaskExecutorError (wrapper) on failure so orchestrator callers
-        don’t have to know about PatchBuildError vs ValueError, etc.
+        Raises:
+            TaskExecutorError — wrapped lower-level errors.
         """
         try:
-            # 1. already-built patch supplied?  --------------------------------
+            patch: str = ""
+
+            # 1️⃣  already-built patch supplied -----------------------------
             raw = task.get("patch")
-            if isinstance(raw, str) and raw.strip():
-                return raw if raw.endswith("\n") else raw + "\n"
+            if isinstance(raw, str):
+                patch = raw
 
-            # 2. new ChangeSet path  ------------------------------------------
-            if "change_set" in task:
+            # 2️⃣  structured ChangeSet path --------------------------------
+            elif "change_set" in task:
                 cs_obj = ChangeSet.from_dict(task["change_set"])
-                # Always build relative to repository ROOT (cwd) so paths in
-                # ChangeSet remain valid even when src_root == "cadence"
-                return build_patch(cs_obj, Path("."))
+                patch = build_patch(cs_obj, Path("."))  # build relative to repo root
 
-            # 3. legacy single-file diff dict  --------------------------------
-            return self._build_one_file_diff(task)
+            # 3️⃣  legacy one-file diff path ---------------------------------
+            else:
+                patch = self._build_one_file_diff(task)
+
+            # ---- common validation ----------------------------------------
+            if not patch.strip():  # no textual change → probably already applied
+                raise PatchBuildError("empty diff – change already present")
+
+            return patch if patch.endswith("\n") else patch + "\n"
 
         except PatchBuildError as exc:
             raise TaskExecutorError(str(exc)) from exc
@@ -77,7 +91,7 @@ class TaskExecutor:
         diff_info = task.get("diff")
         if not diff_info:
             raise TaskExecutorError(
-                "Task missing 'change_set' or 'diff' or already-built 'patch'."
+                "Task missing 'change_set', 'diff', or already-built 'patch'."
             )
 
         file_rel = diff_info.get("file", "")
@@ -113,12 +127,17 @@ class TaskExecutor:
         )
         patch = "".join(diff_lines)
         if not patch.strip():
-            raise TaskExecutorError("Generated patch is empty.")
-        if not patch.endswith("\n"):
-            patch += "\n"
-        return patch
-    
+            raise PatchBuildError("empty diff – change already present")
+        return patch if patch.endswith("\n") else patch + "\n"
+
+    # ------------------------------------------------------------------ #
+    # Post-commit helper – update remaining tasks with before_sha
+    # ------------------------------------------------------------------ #
     def propagate_before_sha(self, file_shas: dict[str, str], backlog_mgr):
+        """
+        Update any **open** tasks whose ChangeSet edits touch files that have
+        just been committed, filling in the ``before_sha`` field in-place.
+        """
         for task in backlog_mgr.list_items("open"):
             cs = task.get("change_set")
             if not cs:
