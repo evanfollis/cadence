@@ -1,0 +1,145 @@
+{
+  "MVP_CRITICAL": {
+    "EPICS": [
+      {
+        "id": "E-MVP-1",
+        "title": "Agentic Core Loop Proof",
+        "why": "Demonstrate an LLM-driven red→green patch cycle with zero human steps.",
+        "stories": ["S-MVP-1.1", "S-MVP-1.2", "S-MVP-1.3", "S-MVP-1.4"]
+      },
+      {
+        "id": "E-MVP-2",
+        "title": "Risk Boundary & Circuit Breaker",
+        "why": "Guarantee safety while agents learn (no shell, no disk writes).",
+        "stories": ["S-MVP-2.1"]
+      },
+      {
+        "id": "E-DEV-1",
+        "title": "VS Code Sidekick Extension",
+        "why": "First-class developer UX; chat, code-aware actions, live dashboards.",
+        "stories": [
+          "S-DEV-1.0",
+          "S-DEV-1.1",
+          "S-DEV-1.2",
+          "S-DEV-1.3",
+          "S-DEV-1.4"
+        ]
+      }
+    ],
+
+    "STORIES": [
+      { "id": "S-MVP-1.1", "epic": "E-MVP-1", "title": "Seed Toy Defect & Failing Test",
+        "owner": "HYBRID", "tasks": ["T-MVP-1.1.1", "T-MVP-1.1.2"] },
+      { "id": "S-MVP-1.2", "epic": "E-MVP-1", "title": "In-Process Orchestrator Skeleton",
+        "owner": "HYBRID", "tasks": ["T-MVP-1.2.1", "T-MVP-1.2.2"] },
+      { "id": "S-MVP-1.3", "epic": "E-MVP-1", "title": "LLM Patch Generator v0",
+        "owner": "AGENT",  "tasks": ["T-MVP-1.3.1"] },
+      { "id": "S-MVP-1.4", "epic": "E-MVP-1", "title": "Autonomous Retry Loop & Success Detect",
+        "owner": "AGENT",  "tasks": ["T-MVP-1.4.1", "T-MVP-1.4.2"] },
+      { "id": "S-MVP-2.1", "epic": "E-MVP-2", "title": "Circuit Breaker & Rollback Policy",
+        "owner": "HYBRID", "tasks": ["T-MVP-2.1.1", "T-MVP-2.1.2"] },
+
+      { "id": "S-DEV-1.0", "epic": "E-DEV-1", "title": "Phase-0 Hello-World Chat Webview",
+        "owner": "HYBRID", "tasks": [
+          "T-DEV-1.0.1", "T-DEV-1.0.2", "T-DEV-1.0.3"
+        ]},
+      { "id": "S-DEV-1.1", "epic": "E-DEV-1", "title": "Phase-1 CodeLens & Selection Commands",
+        "owner": "HYBRID", "tasks": [
+          "T-DEV-1.1.1", "T-DEV-1.1.2"
+        ]},
+      { "id": "S-DEV-1.2", "epic": "E-DEV-1", "title": "Phase-2 Backlog Tree View & Create-Task",
+        "owner": "HYBRID", "tasks": [
+          "T-DEV-1.2.1", "T-DEV-1.2.2"
+        ]},
+      { "id": "S-DEV-1.3", "epic": "E-DEV-1", "title": "Phase-3 Patch Generation & Review Decorations",
+        "owner": "HYBRID", "tasks": [
+          "T-DEV-1.3.1", "T-DEV-1.3.2"
+        ]},
+      { "id": "S-DEV-1.4", "epic": "E-DEV-1", "title": "Phase-4 Orchestrator Dashboard Webview",
+        "owner": "HYBRID", "tasks": [
+          "T-DEV-1.4.1"
+        ]}
+    ],
+
+    "TASKS": [
+      { "id": "T-MVP-1.1.1", "story": "S-MVP-1.1",
+        "desc": "Create utils/add.py that incorrectly returns (x - 1 + y).",
+        "autonomous": false, "deps": [] },
+      { "id": "T-MVP-1.1.2", "story": "S-MVP-1.1",
+        "desc": "Add tests/test_add.py expecting add(2,3)==5 (should FAIL).",
+        "autonomous": false, "deps": ["T-MVP-1.1.1"] },
+
+      { "id": "T-MVP-1.2.1", "story": "S-MVP-1.2",
+        "desc": "Build mvp_loop.py that runs pytest, calls TaskAgent, applies diff in-memory.",
+        "autonomous": true, "deps": [] },
+      { "id": "T-MVP-1.2.2", "story": "S-MVP-1.2",
+        "desc": "Ensure mvp_loop has zero disk/subprocess side-effects; print JSON summary.",
+        "autonomous": true, "deps": ["T-MVP-1.2.1"] },
+
+      { "id": "T-MVP-1.3.1", "story": "S-MVP-1.3",
+        "desc": "Implement TaskAgent.prompt() few-shot + TaskExecutor.build_patch.",
+        "autonomous": true, "deps": ["T-MVP-1.2.2"] },
+
+      { "id": "T-MVP-1.4.1", "story": "S-MVP-1.4",
+        "desc": "Retry loop up to 3; send previous diff & error back to TaskAgent.",
+        "autonomous": true, "deps": ["T-MVP-1.3.1"] },
+      { "id": "T-MVP-1.4.2", "story": "S-MVP-1.4",
+        "desc": "Exit SUCCESS on first green; else exit(1) after third failure.",
+        "autonomous": true, "deps": ["T-MVP-1.4.1"] },
+
+      { "id": "T-MVP-2.1.1", "story": "S-MVP-2.1",
+        "desc": "Wrap pytest invocation in try/except; revert in-memory patch on crash.",
+        "autonomous": true, "deps": ["T-MVP-1.2.2"] },
+      { "id": "T-MVP-2.1.2", "story": "S-MVP-2.1",
+        "desc": "Abort loop & require human after 3 consecutive failed attempts.",
+        "autonomous": true, "deps": ["T-MVP-2.1.1"] },
+
+      { "id": "T-DEV-1.0.1", "story": "S-DEV-1.0",
+        "desc": "Scaffold VS Code extension with `yo code`. Register command: Sidekick:Open Chat.",
+        "autonomous": false, "deps": [] },
+      { "id": "T-DEV-1.0.2", "story": "S-DEV-1.0",
+        "desc": "Implement WebSocket JSON-RPC bridge `tools/ext_bridge.py` exposing /chat endpoint.",
+        "autonomous": true, "deps": ["T-DEV-1.0.1"] },
+      { "id": "T-DEV-1.0.3", "story": "S-DEV-1.0",
+        "desc": "Create Chat Webview that streams messages; status-bar ‘Sidekick • o3’.",
+        "autonomous": false, "deps": ["T-DEV-1.0.2"] },
+
+      { "id": "T-DEV-1.1.1", "story": "S-DEV-1.1",
+        "desc": "Add CodeLens ‘Ask Sidekick’ at top of .py files; send file text + cursor pos.",
+        "autonomous": false, "deps": ["T-DEV-1.0.3", "T-MVP-1.2.2"] },
+      { "id": "T-DEV-1.1.2", "story": "S-DEV-1.1",
+        "desc": "Register selection context-menu commands: Explain / Refactor / Create Test.",
+        "autonomous": false, "deps": ["T-DEV-1.1.1"] },
+
+      { "id": "T-DEV-1.2.1", "story": "S-DEV-1.2",
+        "desc": "Implement Backlog TreeDataProvider reading via BacklogManager JSON.",
+        "autonomous": false, "deps": ["T-DEV-1.0.3"] },
+      { "id": "T-DEV-1.2.2", "story": "S-DEV-1.2",
+        "desc": "Command ‘Create micro-task from chat’ → append to backlog file.",
+        "autonomous": false, "deps": ["T-DEV-1.2.1"] },
+
+      { "id": "T-DEV-1.3.1", "story": "S-DEV-1.3",
+        "desc": "Generate-Patch command → invoke TaskExecutor.build_patch, open diff view.",
+        "autonomous": false, "deps": ["T-MVP-1.3.1"] },
+      { "id": "T-DEV-1.3.2", "story": "S-DEV-1.3",
+        "desc": "After TaskReviewer.review_patch decorate hunks with pass/fail gutter icons.",
+        "autonomous": false, "deps": ["T-DEV-1.3.1"] },
+
+      { "id": "T-DEV-1.4.1", "story": "S-DEV-1.4",
+        "desc": "Webview ‘Dev Dashboard’—show phase, task ID, commit SHA; ‘Run Full Cycle’ button.",
+        "autonomous": false, "deps": ["T-MVP-1.4.2", "T-DEV-1.3.2"] }
+    ]
+  },
+
+  "POST_MVP": {
+    "blocked_until": "E-MVP-1:DONE",
+    "epics_placeholder": [
+      "E-SCALE-1  Strict Typing & CI",
+      "E-SCALE-2  Immutable Logging",
+      "E-SCALE-3  ShellRunner Hardening",
+      "E-SCALE-4  Observability & Metrics",
+      "E-SCALE-5  Multi-file Diffs",
+      "E-SCALE-6  Secrets & Security"
+    ]
+  }
+}
