@@ -1,159 +1,118 @@
 [
   {
-    "id": "blueprint-1-filemutex",
-    "title": "Create cross-process FileMutex helper",
+    "id": "blueprint-2-rollback-shellrunner",
+    "title": "Add rollback() + dirty_repo flag to ShellRunner",
     "type": "blueprint",
     "status": "archived",
     "created_at": "2025-06-24T00:00:00Z",
-    "description": "Implement src/cadence/dev/locking.py defining: class FileMutex: \u2022 Context-manager acquires exclusive lock on <target_path>.lock. \u2022 POSIX: fcntl.flock, Windows: msvcrt.locking, otherwise no-op stub with warning. \u2022 Exposes .path (lockfile) and .acquired boolean. Add docstring with platform notes and example usage."
+    "description": "Enhance src/cadence/dev/shell.py: 1. Internal helper _git_apply_reverse(patch) (mirror of git_apply with -R). 2. Public def rollback(self, patch:str | None) -> bool which: \u2022 Returns True if reverse-apply succeeds. \u2022 On failure sets self.dirty_repo = True, records failed_rollback in TaskRecord, and returns False. 3. self.dirty_repo defaults to False on instantiation and after every successful git_commit. 4. Mark phase \u2018rollback_done\u2019 when rollback succeeds (optional)."
   },
   {
-    "id": "blueprint-2-integrate-mutex",
-    "title": "Guard backlog & record JSON writes with FileMutex",
+    "id": "blueprint-2-dirty-guard-orchestrator",
+    "title": "Integrate dirty-repo guard in DevOrchestrator",
     "type": "blueprint",
     "status": "archived",
     "created_at": "2025-06-24T00:00:00Z",
-    "description": "Edit backlog.py and record.py: \u2022 Wrap all disk I/O (save, load, _persist) in `with FileMutex(self.path): \u2026` in addition to existing RLock. \u2022 Remove any redundant tmp-file rename race comments. Preserve existing atomic-swap semantics."
+    "description": "Edit src/cadence/dev/orchestrator.py: \u2022 At the very beginning of run_task_cycle, if self.shell.dirty_repo is True, log state blocked_dirty_repo and raise RuntimeError(\"Repository dirty after failed rollback\"). \u2022 Replace existing _attempt_rollback() logic with call to self.shell.rollback(rollback_patch). If it returns False, abort cycle early with success=False payload containing \"dirty_repo\": True."
   },
   {
-    "id": "blueprint-3-audit-lock",
-    "title": "Unify audit log locking via FileMutex",
+    "id": "blueprint-2-docs-rollback",
+    "title": "Document rollback & dirty-repo in DEV_PROCESS.md",
     "type": "blueprint",
     "status": "archived",
     "created_at": "2025-06-24T00:00:00Z",
-    "description": "In src/cadence/audit/agent_event_log.py and audit/llm_call_log.py: \u2022 Delete the conditional `from filelock import FileLock` import. \u2022 Import FileMutex and use it in place of FileLock (same semantics: `with FileMutex(jsonl_path):`). \u2022 If FileMutex is stub (no lock), behaviour matches old optional dependency path."
+    "description": "Add small ASCII flow diagram under Failure Handling in docs/DEV_PROCESS.md: `patch_apply \u2192 test_fail \u2192 rollback \u2192 [ok] | [rollback_fail \u2192 dirty_repo flag \u2192 block next loop]` Describe manual/unblock options for developers (e.g. git reset --hard then self.shell.dirty_repo=False). Ensure linter passes."
   },
   {
-    "id": "blueprint-4-docs-update",
-    "title": "Document mutex in DEV_PROCESS.md",
+    "id": "blueprint-2-test-rollback",
+    "title": "Strengthen test_failed_rollback.py",
     "type": "blueprint",
     "status": "archived",
     "created_at": "2025-06-24T00:00:00Z",
-    "description": "Add bullet under **Persistence** subsection in docs/DEV_PROCESS.md: \u201cBacklog and TaskRecord writes are protected by FileMutex (fcntl/msvcrt) to prevent multi-process clobber.\u201d Ensure phase-table linter still passes."
+    "description": "Update or create tests/test_failed_rollback.py: 1. Create tmp repo with two commits. 2. Forge a ChangeSet that intentionally fails tests (e.g. syntax error). 3. Run orchestrator cycle; assert: result['success'] is False, result['stage'] == 'test', shell.dirty_repo is False. 4. Simulate rollback failure (e.g. corrupt patch) and assert dirty_repo is True and subsequent run_task_cycle immediately aborts with blocked_dirty_repo. Use pytest.raises."
   },
   {
-    "id": "blueprint-5-mutex-test",
-    "title": "Add test_file_mutex.py",
-    "type": "blueprint",
-    "status": "archived",
-    "created_at": "2025-06-24T00:00:00Z",
-    "description": "Create new test that: 1. Uses tempfile.TemporaryDirectory() as isolated repo. 2. Spawns two `python -c` subprocesses that each instantiate BacklogManager on the same JSON file and append a unique task (sleep 0.1 between writes). 3. Wait for both to finish; load JSON; assert len(list_items)==2 and file is valid. Skip on Windows if multiprocessing spawn causes flake (mark xfail)."
-  },
-  {
-    "id": "82052b8a-90cb-46de-8bfc-afda611bfa81",
-    "title": "Create cross-process FileMutex helper",
+    "id": "c9649ee3-8306-4aaf-aa52-1036be5d830a",
+    "title": "Add rollback() + dirty_repo flag to ShellRunner",
     "type": "micro",
     "status": "open",
-    "created_at": "2025-06-25T03:18:27.751252+00:00",
+    "created_at": "2025-06-25T03:21:01.031833+00:00",
     "change_set": {
       "edits": [
         {
-          "path": "src/cadence/dev/locking.py",
-          "after": "import os\nimport sys\nimport warnings\n\nclass FileMutex:\n    \"\"\"\n    Context manager for cross-process file-based mutex locking.\n\n    On POSIX, uses fcntl.flock for advisory locking.\n    On Windows, uses msvcrt.locking for exclusive file locks.\n    On unsupported platforms, acts as a stub and issues a warning.\n\n    Attributes:\n        path (str): Path to the lock file (<target_path>.lock)\n        acquired (bool): True if the lock is held by this context, else False.\n\n    Example:\n        >>> with FileMutex('/tmp/myresource') as mtx:\n        ...     if mtx.acquired:\n        ...         # critical section\n        ...         pass\n\n    Notes:\n        - Lock files are named <target_path>.lock\n        - Lock is released on exit from context\n        - Advisory: all cooperating processes must use this mechanism\n    \"\"\"\n    def __init__(self, target_path):\n        self._file = None\n        self.acquired = False\n        self.path = f\"{target_path}.lock\"\n\n    def __enter__(self):\n        if sys.platform.startswith('linux') or sys.platform.startswith('darwin') or 'bsd' in sys.platform:\n            try:\n                import fcntl\n                self._file = open(self.path, 'w')\n                fcntl.flock(self._file, fcntl.LOCK_EX)\n                self.acquired = True\n            except Exception as e:\n                warnings.warn(f\"FileMutex failed to acquire POSIX lock: {e}\")\n                self.acquired = False\n        elif sys.platform.startswith('win'):\n            try:\n                import msvcrt\n                self._file = open(self.path, 'a+')\n                self._file.seek(0)\n                msvcrt.locking(self._file.fileno(), msvcrt.LK_NBLCK, 1)\n                self.acquired = True\n            except Exception as e:\n                warnings.warn(f\"FileMutex failed to acquire Windows lock: {e}\")\n                self.acquired = False\n        else:\n            warnings.warn(f\"FileMutex: Platform {sys.platform} not supported; lock is a no-op.\")\n            self.acquired = True\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if sys.platform.startswith('linux') or sys.platform.startswith('darwin') or 'bsd' in sys.platform:\n            try:\n                if self._file:\n                    import fcntl\n                    fcntl.flock(self._file, fcntl.LOCK_UN)\n                    self._file.close()\n            except Exception:\n                pass\n        elif sys.platform.startswith('win'):\n            try:\n                if self._file:\n                    import msvcrt\n                    self._file.seek(0)\n                    msvcrt.locking(self._file.fileno(), msvcrt.LK_UNLCK, 1)\n                    self._file.close()\n            except Exception:\n                pass\n        self.acquired = False\n        self._file = None\n",
-          "before_sha": null,
-          "mode": "add"
-        }
-      ],
-      "message": "Implement FileMutex class in src/cadence/dev/locking.py for cross-process locking using platform-appropriate mechanisms. Adds context manager, .acquired, .path, and a comprehensive docstring with example and notes.",
-      "author": "",
-      "meta": {}
-    },
-    "parent_id": "blueprint-1-filemutex"
-  },
-  {
-    "id": "2fe82233-5de9-45a4-9ff1-cec62d1a7c2b",
-    "title": "Guard backlog & record JSON writes with FileMutex",
-    "type": "micro",
-    "status": "open",
-    "created_at": "2025-06-25T03:18:29.575469+00:00",
-    "change_set": {
-      "edits": [
-        {
-          "path": "backlog.py",
-          "after": null,
-          "before_sha": null,
-          "mode": "modify"
-        },
-        {
-          "path": "record.py",
+          "path": "src/cadence/dev/shell.py",
           "after": null,
           "before_sha": null,
           "mode": "modify"
         }
       ],
-      "message": "Wrap all JSON disk I/O in backlog.py and record.py with FileMutex(self.path), in addition to RLock. Remove outdated tmp/rename race comments but preserve atomic file swap semantics.",
+      "message": "Enhance ShellRunner in src/cadence/dev/shell.py: 1) Add _git_apply_reverse(patch) as internal helper (mirror of git_apply but uses -R); 2) Add public rollback(self, patch: str | None) -> bool: runs _git_apply_reverse, returns True if success, else sets self.dirty_repo = True, records failed_rollback in TaskRecord, returns False; 3) self.dirty_repo defaults to False at instantiation and after successful git_commit; 4) Optionally, mark phase 'rollback_done' if rollback succeeds.",
       "author": "",
       "meta": {}
     },
-    "parent_id": "blueprint-2-integrate-mutex"
+    "parent_id": "blueprint-2-rollback-shellrunner"
   },
   {
-    "id": "108e52ea-3404-459f-994c-27d875b6bee8",
-    "title": "Unify audit log locking via FileMutex",
+    "id": "7b991de0-0e45-4f1e-94fc-fb32955b730b",
+    "title": "Integrate dirty-repo guard in DevOrchestrator",
     "type": "micro",
     "status": "open",
-    "created_at": "2025-06-25T03:18:31.315827+00:00",
+    "created_at": "2025-06-25T03:21:04.915960+00:00",
     "change_set": {
       "edits": [
         {
-          "path": "src/cadence/audit/agent_event_log.py",
-          "after": null,
-          "before_sha": null,
-          "mode": "modify"
-        },
-        {
-          "path": "src/cadence/audit/llm_call_log.py",
-          "after": null,
+          "path": "src/cadence/dev/orchestrator.py",
+          "after": "# ...\n# At the beginning of run_task_cycle, add dirty repo guard:\ndef run_task_cycle(self, *args, **kwargs):\n    # Dirty repo guard\n    if self.shell.dirty_repo:\n        self.log_state('blocked_dirty_repo')\n        raise RuntimeError(\"Repository dirty after failed rollback\")\n    # ... rest of run_task_cycle code ...\n    # Replace _attempt_rollback logic with shell.rollback(rollback_patch):\n    # Old code:\n    # success = self._attempt_rollback()\n    # if not success:\n    #     ... (handle failure)\n    # New code:\n    success = self.shell.rollback(rollback_patch)\n    if not success:\n        payload = {\"dirty_repo\": True}\n        # Other logic to abort early with success=False and payload\n        return {\"success\": False, **payload}\n    # ... rest of cycle\n",
           "before_sha": null,
           "mode": "modify"
         }
       ],
-      "message": "Unify audit log locking by replacing FileLock with FileMutex in audit_event_log.py and llm_call_log.py. Remove conditional import for FileLock, import FileMutex, and use it in its place. Ensure FileMutex is used with same usage pattern as FileLock, and that stub fallback behavior is preserved.",
+      "message": "Integrate dirty-repo guard in DevOrchestrator:\n- In src/cadence/dev/orchestrator.py, at the start of run_task_cycle, if self.shell.dirty_repo is True, log state 'blocked_dirty_repo' and raise a RuntimeError.\n- Replace _attempt_rollback() logic with self.shell.rollback(rollback_patch), and if it returns False, abort cycle early with success=False and dirty_repo=True.",
       "author": "",
       "meta": {}
     },
-    "parent_id": "blueprint-3-audit-lock"
+    "parent_id": "blueprint-2-dirty-guard-orchestrator"
   },
   {
-    "id": "365f39d0-e7b7-464b-83c8-90797f5fcddd",
-    "title": "Document mutex in DEV_PROCESS.md",
+    "id": "3223c9b7-7482-4dbb-a785-2a1496317631",
+    "title": "Document rollback & dirty-repo in DEV_PROCESS.md",
     "type": "micro",
     "status": "open",
-    "created_at": "2025-06-25T03:18:32.745906+00:00",
+    "created_at": "2025-06-25T03:21:11.778967+00:00",
     "change_set": {
       "edits": [
         {
           "path": "docs/DEV_PROCESS.md",
-          "after": "- Backlog and TaskRecord writes are protected by FileMutex (fcntl/msvcrt) to prevent multi-process clobber.",
+          "after": "## Failure Handling\n\nWhen patches fail to apply cleanly or tests fail, the following process occurs:\n\n```\npatch_apply \u2192 test_fail \u2192 rollback \u2192 [ok]\n                          \u2502\n                          \u2514\u2500\u2500 [rollback_fail \u2192 dirty_repo flag \u2192 block next loop]\n```\n\n- If rollback succeeds ([ok]), the process may continue.\n- If rollback fails, a `dirty_repo` flag is set, preventing further automated actions until resolved.\n\n### Unblocking a Dirty Repository\nTo unblock development after a dirty repo:\n\n1. Manually reset the repository:\n   ```\n   git reset --hard\n   ```\n2. In Python, clear the dirty repo flag:\n   ```python\n   self.shell.dirty_repo = False\n   ```\n\nYou can now proceed with new patches or test cycles.\n",
           "before_sha": null,
           "mode": "modify"
         }
       ],
-      "message": "Document FileMutex protection of Backlog and TaskRecord writes in DEV_PROCESS.md under Persistence section.",
+      "message": "Document process for rollback and dirty-repo handling after patch application failure.\n\n- Add an ASCII flow diagram under Failure Handling in docs/DEV_PROCESS.md outlining rollback and dirty_repo logic.\n- Explain manual/unblock steps for developers (e.g. git reset --hard, updating self.shell.dirty_repo=False).\n- Ensure style aligns with linter requirements.",
       "author": "",
       "meta": {}
     },
-    "parent_id": "blueprint-4-docs-update"
+    "parent_id": "blueprint-2-docs-rollback"
   },
   {
-    "id": "f80737ea-9f47-44cb-946f-426e9aeefdc0",
-    "title": "Add test_file_mutex.py",
+    "id": "a1598bf0-e0a6-41de-b744-0d58112b8181",
+    "title": "Strengthen test_failed_rollback.py",
     "type": "micro",
     "status": "open",
-    "created_at": "2025-06-25T03:18:39.611505+00:00",
+    "created_at": "2025-06-25T03:21:21.305198+00:00",
     "change_set": {
       "edits": [
         {
-          "path": "tests/test_file_mutex.py",
-          "after": "import os\nimport sys\nimport json\nimport time\nimport tempfile\nimport subprocess\nimport platform\nimport pytest\n\n# Skip/xfail for Windows multiprocessing flakiness\ndef should_xfail():\n    return sys.platform.startswith(\"win\")\n\ndef test_file_mutex():\n    if should_xfail():\n        pytest.xfail(\"Likely flaky on Windows multiprocessing spawn\")\n    with tempfile.TemporaryDirectory() as d:\n        backlog_file = os.path.join(d, \"backlog.json\")\n        code = (\n            \"from your_module import BacklogManager; \"\n            \"import sys; bm=BacklogManager(sys.argv[1]); bm.add({'task': sys.argv[2]}); import time; time.sleep(0.1)\"\n        )\n        # Use unique task names\n        cmd1 = [sys.executable, \"-c\", code, backlog_file, \"task1\"]\n        cmd2 = [sys.executable, \"-c\", code, backlog_file, \"task2\"]\n        p1 = subprocess.Popen(cmd1)\n        p2 = subprocess.Popen(cmd2)\n        p1.wait()\n        p2.wait()\n        # Validate file exists and both tasks are present\n        with open(backlog_file, 'r') as f:\n            items = json.load(f)\n            assert isinstance(items, list)\n            assert len(items) == 2\n        # Optional structure/content check: each task present?\n        task_names = {item['task'] for item in items}\n        assert task_names == {\"task1\", \"task2\"}\n",
+          "path": "tests/test_failed_rollback.py",
+          "after": "import os\nimport pytest\nfrom orchestrator import run_task_cycle, Orchestrator, Shell\nfrom changeset import ChangeSet\n# Add any additional imports needed\n\n@pytest.fixture\ndef tmp_git_repo(tmp_path):\n    from git import Repo\n    repo_dir = tmp_path / \"repo\"\n    repo_dir.mkdir()\n    repo = Repo.init(str(repo_dir))\n    test_file = repo_dir / \"test.txt\"\n    test_file.write_text(\"initial content\\n\")\n    repo.index.add([str(test_file)])\n    repo.index.commit(\"initial commit\")\n    test_file.write_text(\"second content\\n\")\n    repo.index.add([str(test_file)])\n    repo.index.commit(\"second commit\")\n    return repo, repo_dir\n\ndef test_failed_rollback_logic(tmp_git_repo):\n    repo, repo_dir = tmp_git_repo\n    shell = Shell(cwd=str(repo_dir))\n    orchestrator = Orchestrator(shell=shell)\n    # Forge a ChangeSet that will fail tests (e.g., introduce syntax error)\n    changeset = ChangeSet(\n        message=\"break test\",\n        edits=[{\n            \"path\": \"broken.py\",\n            \"mode\": \"add\",\n            \"after\": \"def broken(:\\n    pass\\n\"\n        }]\n    )\n    # Apply ChangeSet, which should introduce an error\n    result = orchestrator.run_cycle([changeset])\n    assert result['success'] is False\n    assert result['stage'] == 'test'\n    assert shell.dirty_repo is False\n    # Corrupt the patch or make rollback fail on purpose\n    # For example, delete .git directory to simulate unrecoverable rollback\n    import shutil\n    shutil.rmtree(os.path.join(str(repo_dir), '.git'))\n    # Re-apply the changeset, should fail rollback and mark repo as dirty\n    with pytest.raises(Exception) as excinfo:\n        orchestrator.run_task_cycle([changeset])\n    assert getattr(shell, 'dirty_repo', False) is True\n    assert 'blocked_dirty_repo' in str(excinfo.value)\n",
           "before_sha": null,
-          "mode": "add"
+          "mode": "modify"
         }
       ],
-      "message": "Add test_file_mutex.py to test concurrent BacklogManager access to a JSON file. The test uses tempfile.TemporaryDirectory() as an isolated repo. It spawns two python subprocesses, each instantiating BacklogManager (on the same file) and appending a unique task, sleeping 0.1s between writes. The test waits for both processes to finish, verifies the JSON contains both tasks (len==2), and asserts file validity. Skips or marks xfail on Windows if spawn issues cause flakiness.",
+      "message": "Strengthen tests/test_failed_rollback.py with a test that: (1) creates a tmp repo and two commits, (2) forges a ChangeSet with a test-breaking error, (3) runs an orchestrator cycle and asserts test failure, dirty_repo handling, and (4) simulates a corrupt rollback and checks appropriate abort and exception with pytest.raises.",
       "author": "",
       "meta": {}
     },
-    "parent_id": "blueprint-5-mutex-test"
+    "parent_id": "blueprint-2-test-rollback"
   }
 ]

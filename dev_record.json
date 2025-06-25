@@ -7131,8 +7131,294 @@
             "output": "..................                                                       [100%]\n18 passed in 3.40s"
           }
         }
+      },
+      {
+        "state": "committed",
+        "timestamp": "2025-06-25T03:18:46.184992+00:00",
+        "task": {
+          "id": "82052b8a-90cb-46de-8bfc-afda611bfa81",
+          "title": "Create cross-process FileMutex helper",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-25T03:18:27.751252+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/locking.py",
+                "after": "import os\nimport sys\nimport warnings\n\nclass FileMutex:\n    \"\"\"\n    Context manager for cross-process file-based mutex locking.\n\n    On POSIX, uses fcntl.flock for advisory locking.\n    On Windows, uses msvcrt.locking for exclusive file locks.\n    On unsupported platforms, acts as a stub and issues a warning.\n\n    Attributes:\n        path (str): Path to the lock file (<target_path>.lock)\n        acquired (bool): True if the lock is held by this context, else False.\n\n    Example:\n        >>> with FileMutex('/tmp/myresource') as mtx:\n        ...     if mtx.acquired:\n        ...         # critical section\n        ...         pass\n\n    Notes:\n        - Lock files are named <target_path>.lock\n        - Lock is released on exit from context\n        - Advisory: all cooperating processes must use this mechanism\n    \"\"\"\n    def __init__(self, target_path):\n        self._file = None\n        self.acquired = False\n        self.path = f\"{target_path}.lock\"\n\n    def __enter__(self):\n        if sys.platform.startswith('linux') or sys.platform.startswith('darwin') or 'bsd' in sys.platform:\n            try:\n                import fcntl\n                self._file = open(self.path, 'w')\n                fcntl.flock(self._file, fcntl.LOCK_EX)\n                self.acquired = True\n            except Exception as e:\n                warnings.warn(f\"FileMutex failed to acquire POSIX lock: {e}\")\n                self.acquired = False\n        elif sys.platform.startswith('win'):\n            try:\n                import msvcrt\n                self._file = open(self.path, 'a+')\n                self._file.seek(0)\n                msvcrt.locking(self._file.fileno(), msvcrt.LK_NBLCK, 1)\n                self.acquired = True\n            except Exception as e:\n                warnings.warn(f\"FileMutex failed to acquire Windows lock: {e}\")\n                self.acquired = False\n        else:\n            warnings.warn(f\"FileMutex: Platform {sys.platform} not supported; lock is a no-op.\")\n            self.acquired = True\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if sys.platform.startswith('linux') or sys.platform.startswith('darwin') or 'bsd' in sys.platform:\n            try:\n                if self._file:\n                    import fcntl\n                    fcntl.flock(self._file, fcntl.LOCK_UN)\n                    self._file.close()\n            except Exception:\n                pass\n        elif sys.platform.startswith('win'):\n            try:\n                if self._file:\n                    import msvcrt\n                    self._file.seek(0)\n                    msvcrt.locking(self._file.fileno(), msvcrt.LK_UNLCK, 1)\n                    self._file.close()\n            except Exception:\n                pass\n        self.acquired = False\n        self._file = None\n",
+                "before_sha": null,
+                "mode": "add"
+              }
+            ],
+            "message": "Implement FileMutex class in src/cadence/dev/locking.py for cross-process locking using platform-appropriate mechanisms. Adds context manager, .acquired, .path, and a comprehensive docstring with example and notes.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-1-filemutex"
+        },
+        "extra": {
+          "commit_sha": "ed13275ba4bf1eb1dffee68652fbd2075c608fd4"
+        }
+      },
+      {
+        "state": "status_done",
+        "timestamp": "2025-06-25T03:18:46.191353+00:00",
+        "task": {
+          "id": "82052b8a-90cb-46de-8bfc-afda611bfa81",
+          "title": "Create cross-process FileMutex helper",
+          "type": "micro",
+          "status": "done",
+          "created_at": "2025-06-25T03:18:27.751252+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/locking.py",
+                "after": "import os\nimport sys\nimport warnings\n\nclass FileMutex:\n    \"\"\"\n    Context manager for cross-process file-based mutex locking.\n\n    On POSIX, uses fcntl.flock for advisory locking.\n    On Windows, uses msvcrt.locking for exclusive file locks.\n    On unsupported platforms, acts as a stub and issues a warning.\n\n    Attributes:\n        path (str): Path to the lock file (<target_path>.lock)\n        acquired (bool): True if the lock is held by this context, else False.\n\n    Example:\n        >>> with FileMutex('/tmp/myresource') as mtx:\n        ...     if mtx.acquired:\n        ...         # critical section\n        ...         pass\n\n    Notes:\n        - Lock files are named <target_path>.lock\n        - Lock is released on exit from context\n        - Advisory: all cooperating processes must use this mechanism\n    \"\"\"\n    def __init__(self, target_path):\n        self._file = None\n        self.acquired = False\n        self.path = f\"{target_path}.lock\"\n\n    def __enter__(self):\n        if sys.platform.startswith('linux') or sys.platform.startswith('darwin') or 'bsd' in sys.platform:\n            try:\n                import fcntl\n                self._file = open(self.path, 'w')\n                fcntl.flock(self._file, fcntl.LOCK_EX)\n                self.acquired = True\n            except Exception as e:\n                warnings.warn(f\"FileMutex failed to acquire POSIX lock: {e}\")\n                self.acquired = False\n        elif sys.platform.startswith('win'):\n            try:\n                import msvcrt\n                self._file = open(self.path, 'a+')\n                self._file.seek(0)\n                msvcrt.locking(self._file.fileno(), msvcrt.LK_NBLCK, 1)\n                self.acquired = True\n            except Exception as e:\n                warnings.warn(f\"FileMutex failed to acquire Windows lock: {e}\")\n                self.acquired = False\n        else:\n            warnings.warn(f\"FileMutex: Platform {sys.platform} not supported; lock is a no-op.\")\n            self.acquired = True\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if sys.platform.startswith('linux') or sys.platform.startswith('darwin') or 'bsd' in sys.platform:\n            try:\n                if self._file:\n                    import fcntl\n                    fcntl.flock(self._file, fcntl.LOCK_UN)\n                    self._file.close()\n            except Exception:\n                pass\n        elif sys.platform.startswith('win'):\n            try:\n                if self._file:\n                    import msvcrt\n                    self._file.seek(0)\n                    msvcrt.locking(self._file.fileno(), msvcrt.LK_UNLCK, 1)\n                    self._file.close()\n            except Exception:\n                pass\n        self.acquired = False\n        self._file = None\n",
+                "before_sha": null,
+                "mode": "add"
+              }
+            ],
+            "message": "Implement FileMutex class in src/cadence/dev/locking.py for cross-process locking using platform-appropriate mechanisms. Adds context manager, .acquired, .path, and a comprehensive docstring with example and notes.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-1-filemutex"
+        },
+        "extra": {}
+      },
+      {
+        "state": "archived",
+        "timestamp": "2025-06-25T03:18:46.197382+00:00",
+        "task": {
+          "id": "82052b8a-90cb-46de-8bfc-afda611bfa81",
+          "title": "Create cross-process FileMutex helper",
+          "type": "micro",
+          "status": "archived",
+          "created_at": "2025-06-25T03:18:27.751252+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/locking.py",
+                "after": "import os\nimport sys\nimport warnings\n\nclass FileMutex:\n    \"\"\"\n    Context manager for cross-process file-based mutex locking.\n\n    On POSIX, uses fcntl.flock for advisory locking.\n    On Windows, uses msvcrt.locking for exclusive file locks.\n    On unsupported platforms, acts as a stub and issues a warning.\n\n    Attributes:\n        path (str): Path to the lock file (<target_path>.lock)\n        acquired (bool): True if the lock is held by this context, else False.\n\n    Example:\n        >>> with FileMutex('/tmp/myresource') as mtx:\n        ...     if mtx.acquired:\n        ...         # critical section\n        ...         pass\n\n    Notes:\n        - Lock files are named <target_path>.lock\n        - Lock is released on exit from context\n        - Advisory: all cooperating processes must use this mechanism\n    \"\"\"\n    def __init__(self, target_path):\n        self._file = None\n        self.acquired = False\n        self.path = f\"{target_path}.lock\"\n\n    def __enter__(self):\n        if sys.platform.startswith('linux') or sys.platform.startswith('darwin') or 'bsd' in sys.platform:\n            try:\n                import fcntl\n                self._file = open(self.path, 'w')\n                fcntl.flock(self._file, fcntl.LOCK_EX)\n                self.acquired = True\n            except Exception as e:\n                warnings.warn(f\"FileMutex failed to acquire POSIX lock: {e}\")\n                self.acquired = False\n        elif sys.platform.startswith('win'):\n            try:\n                import msvcrt\n                self._file = open(self.path, 'a+')\n                self._file.seek(0)\n                msvcrt.locking(self._file.fileno(), msvcrt.LK_NBLCK, 1)\n                self.acquired = True\n            except Exception as e:\n                warnings.warn(f\"FileMutex failed to acquire Windows lock: {e}\")\n                self.acquired = False\n        else:\n            warnings.warn(f\"FileMutex: Platform {sys.platform} not supported; lock is a no-op.\")\n            self.acquired = True\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if sys.platform.startswith('linux') or sys.platform.startswith('darwin') or 'bsd' in sys.platform:\n            try:\n                if self._file:\n                    import fcntl\n                    fcntl.flock(self._file, fcntl.LOCK_UN)\n                    self._file.close()\n            except Exception:\n                pass\n        elif sys.platform.startswith('win'):\n            try:\n                if self._file:\n                    import msvcrt\n                    self._file.seek(0)\n                    msvcrt.locking(self._file.fileno(), msvcrt.LK_UNLCK, 1)\n                    self._file.close()\n            except Exception:\n                pass\n        self.acquired = False\n        self._file = None\n",
+                "before_sha": null,
+                "mode": "add"
+              }
+            ],
+            "message": "Implement FileMutex class in src/cadence/dev/locking.py for cross-process locking using platform-appropriate mechanisms. Adds context manager, .acquired, .path, and a comprehensive docstring with example and notes.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-1-filemutex"
+        },
+        "extra": {}
+      }
+    ],
+    "iterations": [
+      {
+        "timestamp": "2025-06-25T03:18:46.204235+00:00",
+        "phase": "meta_analysis",
+        "payload": {
+          "telemetry": {
+            "success": true,
+            "commit": "ed13275ba4bf1eb1dffee68652fbd2075c608fd4",
+            "task_id": "82052b8a-90cb-46de-8bfc-afda611bfa81"
+          },
+          "policy_check": "stub",
+          "meta_ok": true
+        }
+      }
+    ]
+  },
+  {
+    "task_id": "2fe82233-5de9-45a4-9ff1-cec62d1a7c2b",
+    "created_at": "2025-06-25T03:18:46.255421+00:00",
+    "history": [
+      {
+        "state": "failed_branch_isolation",
+        "timestamp": "2025-06-25T03:18:46.255441+00:00",
+        "task": {
+          "id": "2fe82233-5de9-45a4-9ff1-cec62d1a7c2b",
+          "title": "Guard backlog & record JSON writes with FileMutex",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-25T03:18:29.575469+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "backlog.py",
+                "after": null,
+                "before_sha": null,
+                "mode": "modify"
+              },
+              {
+                "path": "record.py",
+                "after": null,
+                "before_sha": null,
+                "mode": "modify"
+              }
+            ],
+            "message": "Wrap all JSON disk I/O in backlog.py and record.py with FileMutex(self.path), in addition to RLock. Remove outdated tmp/rename race comments but preserve atomic file swap semantics.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-2-integrate-mutex"
+        },
+        "extra": {
+          "error": "error: Your local changes to the following files would be overwritten by checkout:\n\tdev_backlog.json\n\tdev_record.json\nPlease commit your changes or stash them before you switch branches.\nAborting\n"
+        }
+      }
+    ],
+    "iterations": [
+      {
+        "timestamp": "2025-06-25T03:18:46.262126+00:00",
+        "phase": "meta_analysis",
+        "payload": {
+          "telemetry": {},
+          "policy_check": "stub",
+          "meta_ok": true
+        }
+      }
+    ]
+  },
+  {
+    "task_id": "blueprint-2-rollback-shellrunner",
+    "created_at": "2025-06-25T03:21:01.033282+00:00",
+    "history": [
+      {
+        "state": "blueprint_converted",
+        "timestamp": "2025-06-25T03:21:01.033289+00:00",
+        "task": {
+          "id": "blueprint-2-rollback-shellrunner",
+          "title": "Add rollback() + dirty_repo flag to ShellRunner",
+          "type": "blueprint",
+          "status": "open",
+          "created_at": "2025-06-24T00:00:00Z",
+          "description": "Enhance src/cadence/dev/shell.py: 1. Internal helper _git_apply_reverse(patch) (mirror of git_apply with -R). 2. Public def rollback(self, patch:str | None) -> bool which: \u2022 Returns True if reverse-apply succeeds. \u2022 On failure sets self.dirty_repo = True, records failed_rollback in TaskRecord, and returns False. 3. self.dirty_repo defaults to False on instantiation and after every successful git_commit. 4. Mark phase \u2018rollback_done\u2019 when rollback succeeds (optional)."
+        },
+        "extra": {
+          "generated": [
+            "c9649ee3-8306-4aaf-aa52-1036be5d830a"
+          ]
+        }
       }
     ],
     "iterations": []
+  },
+  {
+    "task_id": "blueprint-2-dirty-guard-orchestrator",
+    "created_at": "2025-06-25T03:21:04.918582+00:00",
+    "history": [
+      {
+        "state": "blueprint_converted",
+        "timestamp": "2025-06-25T03:21:04.918606+00:00",
+        "task": {
+          "id": "blueprint-2-dirty-guard-orchestrator",
+          "title": "Integrate dirty-repo guard in DevOrchestrator",
+          "type": "blueprint",
+          "status": "open",
+          "created_at": "2025-06-24T00:00:00Z",
+          "description": "Edit src/cadence/dev/orchestrator.py: \u2022 At the very beginning of run_task_cycle, if self.shell.dirty_repo is True, log state blocked_dirty_repo and raise RuntimeError(\"Repository dirty after failed rollback\"). \u2022 Replace existing _attempt_rollback() logic with call to self.shell.rollback(rollback_patch). If it returns False, abort cycle early with success=False payload containing \"dirty_repo\": True."
+        },
+        "extra": {
+          "generated": [
+            "7b991de0-0e45-4f1e-94fc-fb32955b730b"
+          ]
+        }
+      }
+    ],
+    "iterations": []
+  },
+  {
+    "task_id": "blueprint-2-docs-rollback",
+    "created_at": "2025-06-25T03:21:11.780498+00:00",
+    "history": [
+      {
+        "state": "blueprint_converted",
+        "timestamp": "2025-06-25T03:21:11.780509+00:00",
+        "task": {
+          "id": "blueprint-2-docs-rollback",
+          "title": "Document rollback & dirty-repo in DEV_PROCESS.md",
+          "type": "blueprint",
+          "status": "open",
+          "created_at": "2025-06-24T00:00:00Z",
+          "description": "Add small ASCII flow diagram under Failure Handling in docs/DEV_PROCESS.md: `patch_apply \u2192 test_fail \u2192 rollback \u2192 [ok] | [rollback_fail \u2192 dirty_repo flag \u2192 block next loop]` Describe manual/unblock options for developers (e.g. git reset --hard then self.shell.dirty_repo=False). Ensure linter passes."
+        },
+        "extra": {
+          "generated": [
+            "3223c9b7-7482-4dbb-a785-2a1496317631"
+          ]
+        }
+      }
+    ],
+    "iterations": []
+  },
+  {
+    "task_id": "blueprint-2-test-rollback",
+    "created_at": "2025-06-25T03:21:21.307875+00:00",
+    "history": [
+      {
+        "state": "blueprint_converted",
+        "timestamp": "2025-06-25T03:21:21.307896+00:00",
+        "task": {
+          "id": "blueprint-2-test-rollback",
+          "title": "Strengthen test_failed_rollback.py",
+          "type": "blueprint",
+          "status": "open",
+          "created_at": "2025-06-24T00:00:00Z",
+          "description": "Update or create tests/test_failed_rollback.py: 1. Create tmp repo with two commits. 2. Forge a ChangeSet that intentionally fails tests (e.g. syntax error). 3. Run orchestrator cycle; assert: result['success'] is False, result['stage'] == 'test', shell.dirty_repo is False. 4. Simulate rollback failure (e.g. corrupt patch) and assert dirty_repo is True and subsequent run_task_cycle immediately aborts with blocked_dirty_repo. Use pytest.raises."
+        },
+        "extra": {
+          "generated": [
+            "a1598bf0-e0a6-41de-b744-0d58112b8181"
+          ]
+        }
+      }
+    ],
+    "iterations": []
+  },
+  {
+    "task_id": "c9649ee3-8306-4aaf-aa52-1036be5d830a",
+    "created_at": "2025-06-25T03:21:21.351539+00:00",
+    "history": [
+      {
+        "state": "failed_branch_isolation",
+        "timestamp": "2025-06-25T03:21:21.351562+00:00",
+        "task": {
+          "id": "c9649ee3-8306-4aaf-aa52-1036be5d830a",
+          "title": "Add rollback() + dirty_repo flag to ShellRunner",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-25T03:21:01.031833+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/shell.py",
+                "after": null,
+                "before_sha": null,
+                "mode": "modify"
+              }
+            ],
+            "message": "Enhance ShellRunner in src/cadence/dev/shell.py: 1) Add _git_apply_reverse(patch) as internal helper (mirror of git_apply but uses -R); 2) Add public rollback(self, patch: str | None) -> bool: runs _git_apply_reverse, returns True if success, else sets self.dirty_repo = True, records failed_rollback in TaskRecord, returns False; 3) self.dirty_repo defaults to False at instantiation and after successful git_commit; 4) Optionally, mark phase 'rollback_done' if rollback succeeds.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-2-rollback-shellrunner"
+        },
+        "extra": {
+          "error": "error: Your local changes to the following files would be overwritten by checkout:\n\tdev_backlog.json\n\tdev_record.json\nPlease commit your changes or stash them before you switch branches.\nAborting\n"
+        }
+      }
+    ],
+    "iterations": [
+      {
+        "timestamp": "2025-06-25T03:21:21.359744+00:00",
+        "phase": "meta_analysis",
+        "payload": {
+          "telemetry": {},
+          "policy_check": "stub",
+          "meta_ok": true
+        }
+      }
+    ]
   }
 ]
