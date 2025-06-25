@@ -5193,6 +5193,23 @@
             "4ad983f6-7fa4-4b37-927d-0e3b660fefc3"
           ]
         }
+      },
+      {
+        "state": "blueprint_converted",
+        "timestamp": "2025-06-24T21:33:16.598507+00:00",
+        "task": {
+          "id": "MC-001",
+          "title": "MergeCoordinator MVP (Phase 09)",
+          "type": "story",
+          "status": "open",
+          "created_at": "2025-06-24T00:00:00Z",
+          "description": "Implement src/cadence/dev/merge_coordinator.py and wire it into DevOrchestrator.\n\u2022 Monitor an internal merge queue (branch-names, commit\u2010SHA, task-id).\n\u2022 Fast-forward merge after pre-merge tests pass; auto-rollback on post-merge failure.\n\u2022 Persist snapshots: `merge_queued`, `merge_succeeded`, `merge_rollback`.\n\u2022 Unit tests must stub git calls so CI stays offline."
+        },
+        "extra": {
+          "generated": [
+            "c04894bf-35b5-441b-b12c-53d731b29857"
+          ]
+        }
       }
     ],
     "iterations": [
@@ -5225,6 +5242,23 @@
         "extra": {
           "generated": [
             "c4cd9009-f025-4d49-ac34-d5348572d158"
+          ]
+        }
+      },
+      {
+        "state": "blueprint_converted",
+        "timestamp": "2025-06-24T21:33:25.089150+00:00",
+        "task": {
+          "id": "LOCK-003",
+          "title": "Cross-process file-locking for BacklogManager & TaskRecord",
+          "type": "story",
+          "status": "open",
+          "created_at": "2025-06-24T00:00:10Z",
+          "description": "Prevent two orchestrators on the same repo from corrupting JSON state.\n\u2022 Adopt `filelock` (MIT) \u2192 `<json>.lock` with 10 s timeout.\n\u2022 Acquire in `save()` / `load()` in addition to existing RLock.\n\u2022 Raise FileLockTimeoutError so callers can retry.\n\u2022 Add multiprocessing test that simulates contention."
+        },
+        "extra": {
+          "generated": [
+            "d0189f01-875a-4e42-a91b-4d8ffd3df17d"
           ]
         }
       }

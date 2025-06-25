@@ -1,0 +1,5 @@
+{
+  "src/cadence/context/select.py": "# src/cadence/context/select.py\n\ndef select_context(target_paths: list[str], max_tokens: int = 50_000) -> str:\n    \"\"\"\n    Return BFS-ranked source blobs whose cumulative size ≤ max_tokens.\n    \"\"\"\n    ...",
+  "src/cadence/context/provider.py": "# src/cadence/context/provider.py\nimport subprocess, sys, json\nfrom abc import ABC, abstractmethod\nfrom pathlib import Path\nclass ContextProvider(ABC):\n    @abstractmethod\n    def get_context(self, *roots: Path, exts=(\".py\", \".md\")) -> str: ...\nclass SnapshotContextProvider(ContextProvider):\n    def get_context(self, *roots, exts=(\".py\", \".md\"), out=\"-\") -> str:\n        args = [sys.executable, \"tools/collect_code.py\"]\n        for r in roots: args += [\"--root\", str(r)]\n        for e in exts:  args += [\"--ext\", e]\n        args += [\"--out\", out]\n        return subprocess.run(args, capture_output=True, text=True, check=True).stdout\n",
+  "src/cadence/context/__init__.py": ""
+}
