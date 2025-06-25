@@ -1,0 +1,2 @@
+{"ts": 1750821412.1517482, "event": "agent_init", "agent": "efficiency-025385ab", "profile": "efficiency", "context_digest": "97d170e1550eee4afc0af065b78cda302a97674c", "system_prompt": ""}
+{"ts": 1750821412.174664, "event": "agent_init", "agent": "reasoning-19f67fd5", "profile": "reasoning", "context_digest": "81486c9524ba6a875070639910237b909642dd43", "system_prompt": ""}

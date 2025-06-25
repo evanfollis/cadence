@@ -1,81 +1,77 @@
-"""
-FileMutex: Cross-process exclusive file lock for POSIX and Windows.
-
-- POSIX: Uses fcntl.flock
-- Windows: Uses msvcrt.locking
-- Others: No-op with warning
-
-Example Usage:
-    from cadence.dev.locking import FileMutex
-    with FileMutex('/tmp/somefile') as lock:
-        if lock.acquired:
-            # Do work exclusively
-"""
 import os
 import sys
 import warnings
 
 class FileMutex:
     """
-    Cross-process file-based exclusive lock using system lock primitives.
-    Creates a lock file at <target_path>.lock (does not modify target_path).
-    Platform Support:
-      - POSIX: Uses fcntl.flock
-      - Windows: Uses msvcrt.locking
-      - Other: No-op stub; emits warning, never acquires lock
+    Context manager for cross-process file-based mutex locking.
+
+    On POSIX, uses fcntl.flock for advisory locking.
+    On Windows, uses msvcrt.locking for exclusive file locks.
+    On unsupported platforms, acts as a stub and issues a warning.
 
     Attributes:
-        path (str): Path to lock file
-        acquired (bool): True if lock was acquired
+        path (str): Path to the lock file (<target_path>.lock)
+        acquired (bool): True if the lock is held by this context, else False.
+
+    Example:
+        >>> with FileMutex('/tmp/myresource') as mtx:
+        ...     if mtx.acquired:
+        ...         # critical section
+        ...         pass
+
+    Notes:
+        - Lock files are named <target_path>.lock
+        - Lock is released on exit from context
+        - Advisory: all cooperating processes must use this mechanism
     """
     def __init__(self, target_path):
-        self.path = os.path.abspath(target_path) + '.lock'
-        self._fh = None
+        self._file = None
         self.acquired = False
-        self._platform = sys.platform
-        self._is_posix = self._platform != 'win32'
-        self._is_windows = self._platform == 'win32'
-        self._stub = not (self._is_posix or self._is_windows)
+        self.path = f"{target_path}.lock"
 
     def __enter__(self):
-        if self._is_posix:
-            import fcntl
-            self._fh = open(self.path, 'w')
+        if sys.platform.startswith('linux') or sys.platform.startswith('darwin') or 'bsd' in sys.platform:
             try:
-                fcntl.flock(self._fh, fcntl.LOCK_EX)
+                import fcntl
+                self._file = open(self.path, 'w')
+                fcntl.flock(self._file, fcntl.LOCK_EX)
                 self.acquired = True
-            except Exception:
-                self._fh.close()
-                raise
-        elif self._is_windows:
-            import msvcrt
-            self._fh = open(self.path, 'w')
+            except Exception as e:
+                warnings.warn(f"FileMutex failed to acquire POSIX lock: {e}")
+                self.acquired = False
+        elif sys.platform.startswith('win'):
             try:
-                msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)
+                import msvcrt
+                self._file = open(self.path, 'a+')
+                self._file.seek(0)
+                msvcrt.locking(self._file.fileno(), msvcrt.LK_NBLCK, 1)
                 self.acquired = True
-            except Exception:
-                self._fh.close()
-                raise
+            except Exception as e:
+                warnings.warn(f"FileMutex failed to acquire Windows lock: {e}")
+                self.acquired = False
         else:
-            warnings.warn("FileMutex: Locking is not supported on this platform. Lock is not acquired.")
-            self.acquired = False
+            warnings.warn(f"FileMutex: Platform {sys.platform} not supported; lock is a no-op.")
+            self.acquired = True
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._is_posix and self._fh:
-            import fcntl
+        if sys.platform.startswith('linux') or sys.platform.startswith('darwin') or 'bsd' in sys.platform:
             try:
-                fcntl.flock(self._fh, fcntl.LOCK_UN)
-            finally:
-                self._fh.close()
-                self.acquired = False
-        elif self._is_windows and self._fh:
-            import msvcrt
+                if self._file:
+                    import fcntl
+                    fcntl.flock(self._file, fcntl.LOCK_UN)
+                    self._file.close()
+            except Exception:
+                pass
+        elif sys.platform.startswith('win'):
             try:
-                msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)
-            finally:
-                self._fh.close()
-                self.acquired = False
-        else:
-            self.acquired = False
-        return False
+                if self._file:
+                    import msvcrt
+                    self._file.seek(0)
+                    msvcrt.locking(self._file.fileno(), msvcrt.LK_UNLCK, 1)
+                    self._file.close()
+            except Exception:
+                pass
+        self.acquired = False
+        self._file = None

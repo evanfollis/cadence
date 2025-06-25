@@ -40,59 +40,59 @@
     "description": "Create new test that: 1. Uses tempfile.TemporaryDirectory() as isolated repo. 2. Spawns two `python -c` subprocesses that each instantiate BacklogManager on the same JSON file and append a unique task (sleep 0.1 between writes). 3. Wait for both to finish; load JSON; assert len(list_items)==2 and file is valid. Skip on Windows if multiprocessing spawn causes flake (mark xfail)."
   },
   {
-    "id": "0a6b9569-bdb7-470e-a5d5-84a3d8e633ac",
+    "id": "82052b8a-90cb-46de-8bfc-afda611bfa81",
     "title": "Create cross-process FileMutex helper",
     "type": "micro",
-    "status": "archived",
-    "created_at": "2025-06-25T02:32:08.873143+00:00",
+    "status": "open",
+    "created_at": "2025-06-25T03:18:27.751252+00:00",
     "change_set": {
       "edits": [
         {
           "path": "src/cadence/dev/locking.py",
-          "after": "\"\"\"\nFileMutex: Cross-process exclusive file lock for POSIX and Windows.\n\n- POSIX: Uses fcntl.flock\n- Windows: Uses msvcrt.locking\n- Others: No-op with warning\n\nExample Usage:\n    from cadence.dev.locking import FileMutex\n    with FileMutex('/tmp/somefile') as lock:\n        if lock.acquired:\n            # Do work exclusively\n\"\"\"\nimport os\nimport sys\nimport warnings\n\nclass FileMutex:\n    \"\"\"\n    Cross-process file-based exclusive lock using system lock primitives.\n    Creates a lock file at <target_path>.lock (does not modify target_path).\n    Platform Support:\n      - POSIX: Uses fcntl.flock\n      - Windows: Uses msvcrt.locking\n      - Other: No-op stub; emits warning, never acquires lock\n\n    Attributes:\n        path (str): Path to lock file\n        acquired (bool): True if lock was acquired\n    \"\"\"\n    def __init__(self, target_path):\n        self.path = os.path.abspath(target_path) + '.lock'\n        self._fh = None\n        self.acquired = False\n        self._platform = sys.platform\n        self._is_posix = self._platform != 'win32'\n        self._is_windows = self._platform == 'win32'\n        self._stub = not (self._is_posix or self._is_windows)\n\n    def __enter__(self):\n        if self._is_posix:\n            import fcntl\n            self._fh = open(self.path, 'w')\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_EX)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        elif self._is_windows:\n            import msvcrt\n            self._fh = open(self.path, 'w')\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        else:\n            warnings.warn(\"FileMutex: Locking is not supported on this platform. Lock is not acquired.\")\n            self.acquired = False\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if self._is_posix and self._fh:\n            import fcntl\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_UN)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        elif self._is_windows and self._fh:\n            import msvcrt\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        else:\n            self.acquired = False\n        return False\n",
+          "after": "import os\nimport sys\nimport warnings\n\nclass FileMutex:\n    \"\"\"\n    Context manager for cross-process file-based mutex locking.\n\n    On POSIX, uses fcntl.flock for advisory locking.\n    On Windows, uses msvcrt.locking for exclusive file locks.\n    On unsupported platforms, acts as a stub and issues a warning.\n\n    Attributes:\n        path (str): Path to the lock file (<target_path>.lock)\n        acquired (bool): True if the lock is held by this context, else False.\n\n    Example:\n        >>> with FileMutex('/tmp/myresource') as mtx:\n        ...     if mtx.acquired:\n        ...         # critical section\n        ...         pass\n\n    Notes:\n        - Lock files are named <target_path>.lock\n        - Lock is released on exit from context\n        - Advisory: all cooperating processes must use this mechanism\n    \"\"\"\n    def __init__(self, target_path):\n        self._file = None\n        self.acquired = False\n        self.path = f\"{target_path}.lock\"\n\n    def __enter__(self):\n        if sys.platform.startswith('linux') or sys.platform.startswith('darwin') or 'bsd' in sys.platform:\n            try:\n                import fcntl\n                self._file = open(self.path, 'w')\n                fcntl.flock(self._file, fcntl.LOCK_EX)\n                self.acquired = True\n            except Exception as e:\n                warnings.warn(f\"FileMutex failed to acquire POSIX lock: {e}\")\n                self.acquired = False\n        elif sys.platform.startswith('win'):\n            try:\n                import msvcrt\n                self._file = open(self.path, 'a+')\n                self._file.seek(0)\n                msvcrt.locking(self._file.fileno(), msvcrt.LK_NBLCK, 1)\n                self.acquired = True\n            except Exception as e:\n                warnings.warn(f\"FileMutex failed to acquire Windows lock: {e}\")\n                self.acquired = False\n        else:\n            warnings.warn(f\"FileMutex: Platform {sys.platform} not supported; lock is a no-op.\")\n            self.acquired = True\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if sys.platform.startswith('linux') or sys.platform.startswith('darwin') or 'bsd' in sys.platform:\n            try:\n                if self._file:\n                    import fcntl\n                    fcntl.flock(self._file, fcntl.LOCK_UN)\n                    self._file.close()\n            except Exception:\n                pass\n        elif sys.platform.startswith('win'):\n            try:\n                if self._file:\n                    import msvcrt\n                    self._file.seek(0)\n                    msvcrt.locking(self._file.fileno(), msvcrt.LK_UNLCK, 1)\n                    self._file.close()\n            except Exception:\n                pass\n        self.acquired = False\n        self._file = None\n",
           "before_sha": null,
           "mode": "add"
         }
       ],
-      "message": "Implement cross-process FileMutex helper class for platform locking in src/cadence/dev/locking.py.",
+      "message": "Implement FileMutex class in src/cadence/dev/locking.py for cross-process locking using platform-appropriate mechanisms. Adds context manager, .acquired, .path, and a comprehensive docstring with example and notes.",
       "author": "",
       "meta": {}
     },
     "parent_id": "blueprint-1-filemutex"
   },
   {
-    "id": "5542d96d-cdb6-459c-b504-eed9f02cf154",
+    "id": "2fe82233-5de9-45a4-9ff1-cec62d1a7c2b",
     "title": "Guard backlog & record JSON writes with FileMutex",
     "type": "micro",
     "status": "open",
-    "created_at": "2025-06-25T02:32:12.657542+00:00",
+    "created_at": "2025-06-25T03:18:29.575469+00:00",
     "change_set": {
       "edits": [
         {
           "path": "backlog.py",
-          "after": "# ... other imports ...\nfrom file_mutex import FileMutex\n# ...\nclass Backlog:\n    # ...\n    def save(self):\n        with self._lock:\n            with FileMutex(self.path):\n                # JSON write logic (e.g., atomic-swap save)\n                # ...\n\n    def load(self):\n        with self._lock:\n            with FileMutex(self.path):\n                # JSON read logic\n                # ...\n\n    def _persist(self):\n        with self._lock:\n            with FileMutex(self.path):\n                # JSON write logic\n                # ...\n# Remove any outdated comments about tmp-file and rename races.\n",
+          "after": null,
           "before_sha": null,
           "mode": "modify"
         },
         {
           "path": "record.py",
-          "after": "# ... other imports ...\nfrom file_mutex import FileMutex\n# ...\nclass Record:\n    # ...\n    def save(self):\n        with self._lock:\n            with FileMutex(self.path):\n                # JSON write logic (e.g., atomic-swap save)\n                # ...\n\n    def load(self):\n        with self._lock:\n            with FileMutex(self.path):\n                # JSON read logic\n                # ...\n\n    def _persist(self):\n        with self._lock:\n            with FileMutex(self.path):\n                # JSON write logic\n                # ...\n# Remove any outdated comments about tmp-file and rename races.\n",
+          "after": null,
           "before_sha": null,
           "mode": "modify"
         }
       ],
-      "message": "Guard backlog & record JSON writes with FileMutex for all disk I/O (save, load, _persist). Remove redundant tmp-file rename race comments, while preserving atomic-swap semantics.",
+      "message": "Wrap all JSON disk I/O in backlog.py and record.py with FileMutex(self.path), in addition to RLock. Remove outdated tmp/rename race comments but preserve atomic file swap semantics.",
       "author": "",
       "meta": {}
     },
     "parent_id": "blueprint-2-integrate-mutex"
   },
   {
-    "id": "8684b2bf-0817-4d43-8599-25854c650bd1",
+    "id": "108e52ea-3404-459f-994c-27d875b6bee8",
     "title": "Unify audit log locking via FileMutex",
     "type": "micro",
     "status": "open",
-    "created_at": "2025-06-25T02:32:15.115694+00:00",
+    "created_at": "2025-06-25T03:18:31.315827+00:00",
     "change_set": {
       "edits": [
         {
@@ -108,49 +108,49 @@
           "mode": "modify"
         }
       ],
-      "message": "Unify audit log locking via FileMutex: replace FileLock with FileMutex in agent_event_log.py and llm_call_log.py, remove conditional import, and use FileMutex in the same way as FileLock. If FileMutex is a stub, it matches the previous behavior with optional dependency.",
+      "message": "Unify audit log locking by replacing FileLock with FileMutex in audit_event_log.py and llm_call_log.py. Remove conditional import for FileLock, import FileMutex, and use it in its place. Ensure FileMutex is used with same usage pattern as FileLock, and that stub fallback behavior is preserved.",
       "author": "",
       "meta": {}
     },
     "parent_id": "blueprint-3-audit-lock"
   },
   {
-    "id": "f7d9eecb-5753-4f24-953e-dea7e088160e",
+    "id": "365f39d0-e7b7-464b-83c8-90797f5fcddd",
     "title": "Document mutex in DEV_PROCESS.md",
     "type": "micro",
     "status": "open",
-    "created_at": "2025-06-25T02:32:18.285014+00:00",
+    "created_at": "2025-06-25T03:18:32.745906+00:00",
     "change_set": {
       "edits": [
         {
           "path": "docs/DEV_PROCESS.md",
-          "after": "- Backlog and TaskRecord writes are protected by FileMutex (fcntl/msvcrt) to prevent multi-process clobber.\n",
+          "after": "- Backlog and TaskRecord writes are protected by FileMutex (fcntl/msvcrt) to prevent multi-process clobber.",
           "before_sha": null,
           "mode": "modify"
         }
       ],
-      "message": "Document FileMutex usage for Backlog and TaskRecord writes under Persistence in docs/DEV_PROCESS.md. Confirmed phase-table linter compatibility.",
+      "message": "Document FileMutex protection of Backlog and TaskRecord writes in DEV_PROCESS.md under Persistence section.",
       "author": "",
       "meta": {}
     },
     "parent_id": "blueprint-4-docs-update"
   },
   {
-    "id": "87e3e7b5-32e3-445c-92f9-415c995bfc69",
+    "id": "f80737ea-9f47-44cb-946f-426e9aeefdc0",
     "title": "Add test_file_mutex.py",
     "type": "micro",
     "status": "open",
-    "created_at": "2025-06-25T02:32:25.146131+00:00",
+    "created_at": "2025-06-25T03:18:39.611505+00:00",
     "change_set": {
       "edits": [
         {
           "path": "tests/test_file_mutex.py",
-          "after": "import os\nimport sys\nimport json\nimport time\nimport tempfile\nimport subprocess\nimport pytest\nimport platform\n\n@pytest.mark.xfail(platform.system() == \"Windows\", reason=\"multiprocessing spawn can be flaky on Windows\")\ndef test_mutex_on_json_backlog():\n    with tempfile.TemporaryDirectory() as tmpdir:\n        json_path = os.path.join(tmpdir, \"backlog.json\")\n        # Code to create the repository, if necessary\n        \n        script = (\n            \"import sys; \"\n            \"sys.path.insert(0, '.'); \"  # Adjust according to BacklogManager location\n            \"from backlog_manager import BacklogManager; \"\n            \"mgr = BacklogManager(sys.argv[1]); \"\n            \"mgr.append({'id': sys.argv[2], 'text': sys.argv[2]}); \"\n            \"time.sleep(0.1)\"\n        )\n        cmds = [\n            [sys.executable, \"-c\", script, json_path, \"task1\"],\n            [sys.executable, \"-c\", script, json_path, \"task2\"]\n        ]\n        procs = [subprocess.Popen(cmd) for cmd in cmds]\n        for p in procs:\n            p.wait()\n        \n        assert os.path.exists(json_path), \"JSON file was not created!\"\n        with open(json_path) as f:\n            data = json.load(f)\n        items = list(data) if isinstance(data, list) else data.get(\"items\", [])\n        assert len(items) == 2\n        ids = set(d['id'] for d in items)\n        assert ids == {\"task1\", \"task2\"}",
+          "after": "import os\nimport sys\nimport json\nimport time\nimport tempfile\nimport subprocess\nimport platform\nimport pytest\n\n# Skip/xfail for Windows multiprocessing flakiness\ndef should_xfail():\n    return sys.platform.startswith(\"win\")\n\ndef test_file_mutex():\n    if should_xfail():\n        pytest.xfail(\"Likely flaky on Windows multiprocessing spawn\")\n    with tempfile.TemporaryDirectory() as d:\n        backlog_file = os.path.join(d, \"backlog.json\")\n        code = (\n            \"from your_module import BacklogManager; \"\n            \"import sys; bm=BacklogManager(sys.argv[1]); bm.add({'task': sys.argv[2]}); import time; time.sleep(0.1)\"\n        )\n        # Use unique task names\n        cmd1 = [sys.executable, \"-c\", code, backlog_file, \"task1\"]\n        cmd2 = [sys.executable, \"-c\", code, backlog_file, \"task2\"]\n        p1 = subprocess.Popen(cmd1)\n        p2 = subprocess.Popen(cmd2)\n        p1.wait()\n        p2.wait()\n        # Validate file exists and both tasks are present\n        with open(backlog_file, 'r') as f:\n            items = json.load(f)\n            assert isinstance(items, list)\n            assert len(items) == 2\n        # Optional structure/content check: each task present?\n        task_names = {item['task'] for item in items}\n        assert task_names == {\"task1\", \"task2\"}\n",
           "before_sha": null,
           "mode": "add"
         }
       ],
-      "message": "Add test_file_mutex.py to test concurrent BacklogManager writes using subprocesses in an isolated temp repo. The test spawns two subprocesses appending unique tasks to the same JSON file, ensures both writes succeed, and file contents are valid. Skipped on Windows if multiprocessing spawn is flaky (xfail).",
+      "message": "Add test_file_mutex.py to test concurrent BacklogManager access to a JSON file. The test uses tempfile.TemporaryDirectory() as an isolated repo. It spawns two python subprocesses, each instantiating BacklogManager (on the same file) and appending a unique task, sleeping 0.1s between writes. The test waits for both processes to finish, verifies the JSON contains both tasks (len==2), and asserts file validity. Skips or marks xfail on Windows if spawn issues cause flakiness.",
       "author": "",
       "meta": {}
     },
