@@ -5652,8 +5652,189 @@
             "output": "..................                                                       [100%]\n18 passed in 3.51s"
           }
         }
+      },
+      {
+        "state": "committed",
+        "timestamp": "2025-06-25T02:21:30.806209+00:00",
+        "task": {
+          "id": "15d4bb35-46e7-4907-9ddd-065dc4598a3a",
+          "title": "Move Streamlit Dev Center to legacy area",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-25T02:21:18.724042+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/command_center.py",
+                "after": null,
+                "before_sha": null,
+                "mode": "delete"
+              },
+              {
+                "path": "legacy/command_center.py",
+                "after": "# DEPRECATED: This Streamlit-based prototype UI has been moved to the legacy area and is no longer maintained or exposed via the main API.\n# Do not import from cadence.* modules.\n\n# (Original contents of src/cadence/dev/command_center.py should be copied here.)\n",
+                "before_sha": null,
+                "mode": "add"
+              },
+              {
+                "path": "src/cadence/dev/__init__.py",
+                "after": "# (Existing imports)\n# Removed import of command_center to avoid exposing legacy UI\n# from .command_center import ...\n\n# (Rest of the file remains unchanged)\n",
+                "before_sha": null,
+                "mode": "modify"
+              }
+            ],
+            "message": "Move Streamlit Dev Center prototype to legacy and deprecate it. Prevent exposure via cadence.dev API and remove imports from cadence.*.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-01-move-ui"
+        },
+        "extra": {
+          "commit_sha": "95c3ebf7176d4d9f78e0640184b51dfa8307faf7"
+        }
+      },
+      {
+        "state": "status_done",
+        "timestamp": "2025-06-25T02:21:30.812370+00:00",
+        "task": {
+          "id": "15d4bb35-46e7-4907-9ddd-065dc4598a3a",
+          "title": "Move Streamlit Dev Center to legacy area",
+          "type": "micro",
+          "status": "done",
+          "created_at": "2025-06-25T02:21:18.724042+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/command_center.py",
+                "after": null,
+                "before_sha": null,
+                "mode": "delete"
+              },
+              {
+                "path": "legacy/command_center.py",
+                "after": "# DEPRECATED: This Streamlit-based prototype UI has been moved to the legacy area and is no longer maintained or exposed via the main API.\n# Do not import from cadence.* modules.\n\n# (Original contents of src/cadence/dev/command_center.py should be copied here.)\n",
+                "before_sha": null,
+                "mode": "add"
+              },
+              {
+                "path": "src/cadence/dev/__init__.py",
+                "after": "# (Existing imports)\n# Removed import of command_center to avoid exposing legacy UI\n# from .command_center import ...\n\n# (Rest of the file remains unchanged)\n",
+                "before_sha": null,
+                "mode": "modify"
+              }
+            ],
+            "message": "Move Streamlit Dev Center prototype to legacy and deprecate it. Prevent exposure via cadence.dev API and remove imports from cadence.*.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-01-move-ui"
+        },
+        "extra": {}
+      },
+      {
+        "state": "archived",
+        "timestamp": "2025-06-25T02:21:30.818099+00:00",
+        "task": {
+          "id": "15d4bb35-46e7-4907-9ddd-065dc4598a3a",
+          "title": "Move Streamlit Dev Center to legacy area",
+          "type": "micro",
+          "status": "archived",
+          "created_at": "2025-06-25T02:21:18.724042+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/command_center.py",
+                "after": null,
+                "before_sha": null,
+                "mode": "delete"
+              },
+              {
+                "path": "legacy/command_center.py",
+                "after": "# DEPRECATED: This Streamlit-based prototype UI has been moved to the legacy area and is no longer maintained or exposed via the main API.\n# Do not import from cadence.* modules.\n\n# (Original contents of src/cadence/dev/command_center.py should be copied here.)\n",
+                "before_sha": null,
+                "mode": "add"
+              },
+              {
+                "path": "src/cadence/dev/__init__.py",
+                "after": "# (Existing imports)\n# Removed import of command_center to avoid exposing legacy UI\n# from .command_center import ...\n\n# (Rest of the file remains unchanged)\n",
+                "before_sha": null,
+                "mode": "modify"
+              }
+            ],
+            "message": "Move Streamlit Dev Center prototype to legacy and deprecate it. Prevent exposure via cadence.dev API and remove imports from cadence.*.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-01-move-ui"
+        },
+        "extra": {}
       }
     ],
-    "iterations": []
+    "iterations": [
+      {
+        "timestamp": "2025-06-25T02:21:30.823803+00:00",
+        "phase": "meta_analysis",
+        "payload": {
+          "telemetry": {
+            "success": true,
+            "commit": "95c3ebf7176d4d9f78e0640184b51dfa8307faf7",
+            "task_id": "15d4bb35-46e7-4907-9ddd-065dc4598a3a"
+          },
+          "policy_check": "stub",
+          "meta_ok": true
+        }
+      }
+    ]
+  },
+  {
+    "task_id": "8c1a5a84-e417-49f4-9bcd-fcb52da5af3f",
+    "created_at": "2025-06-25T02:21:30.872826+00:00",
+    "history": [
+      {
+        "state": "failed_branch_isolation",
+        "timestamp": "2025-06-25T02:21:30.872857+00:00",
+        "task": {
+          "id": "8c1a5a84-e417-49f4-9bcd-fcb52da5af3f",
+          "title": "Purge Streamlit dependency",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-25T02:21:21.996454+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "pyproject.toml",
+                "after": null,
+                "before_sha": null,
+                "mode": "modify"
+              },
+              {
+                "path": "requirements.txt",
+                "after": null,
+                "before_sha": null,
+                "mode": "modify"
+              }
+            ],
+            "message": "Remove all references to 'streamlit' from codebase and dependencies. Delete any remaining 'import streamlit' statements or comment them out. Remove 'streamlit' from pyproject.toml and requirements.txt if present, as per purge after Blueprint 01.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-02-purge-streamlit"
+        },
+        "extra": {
+          "error": "error: Your local changes to the following files would be overwritten by checkout:\n\tdev_backlog.json\n\tdev_record.json\nPlease commit your changes or stash them before you switch branches.\nAborting\n"
+        }
+      }
+    ],
+    "iterations": [
+      {
+        "timestamp": "2025-06-25T02:21:30.878613+00:00",
+        "phase": "meta_analysis",
+        "payload": {
+          "telemetry": {},
+          "policy_check": "stub",
+          "meta_ok": true
+        }
+      }
+    ]
   }
 ]
