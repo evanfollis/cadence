@@ -5836,5 +5836,336 @@
         }
       }
     ]
+  },
+  {
+    "task_id": "blueprint-1-filemutex",
+    "created_at": "2025-06-25T02:32:08.874261+00:00",
+    "history": [
+      {
+        "state": "blueprint_converted",
+        "timestamp": "2025-06-25T02:32:08.874268+00:00",
+        "task": {
+          "id": "blueprint-1-filemutex",
+          "title": "Create cross-process FileMutex helper",
+          "type": "blueprint",
+          "status": "open",
+          "created_at": "2025-06-24T00:00:00Z",
+          "description": "Implement src/cadence/dev/locking.py defining: class FileMutex: \u2022 Context-manager acquires exclusive lock on <target_path>.lock. \u2022 POSIX: fcntl.flock, Windows: msvcrt.locking, otherwise no-op stub with warning. \u2022 Exposes .path (lockfile) and .acquired boolean. Add docstring with platform notes and example usage."
+        },
+        "extra": {
+          "generated": [
+            "0a6b9569-bdb7-470e-a5d5-84a3d8e633ac"
+          ]
+        }
+      }
+    ],
+    "iterations": []
+  },
+  {
+    "task_id": "blueprint-2-integrate-mutex",
+    "created_at": "2025-06-25T02:32:12.660502+00:00",
+    "history": [
+      {
+        "state": "blueprint_converted",
+        "timestamp": "2025-06-25T02:32:12.660527+00:00",
+        "task": {
+          "id": "blueprint-2-integrate-mutex",
+          "title": "Guard backlog & record JSON writes with FileMutex",
+          "type": "blueprint",
+          "status": "open",
+          "created_at": "2025-06-24T00:00:00Z",
+          "description": "Edit backlog.py and record.py: \u2022 Wrap all disk I/O (save, load, _persist) in `with FileMutex(self.path): \u2026` in addition to existing RLock. \u2022 Remove any redundant tmp-file rename race comments. Preserve existing atomic-swap semantics."
+        },
+        "extra": {
+          "generated": [
+            "5542d96d-cdb6-459c-b504-eed9f02cf154"
+          ]
+        }
+      }
+    ],
+    "iterations": []
+  },
+  {
+    "task_id": "blueprint-3-audit-lock",
+    "created_at": "2025-06-25T02:32:15.116818+00:00",
+    "history": [
+      {
+        "state": "blueprint_converted",
+        "timestamp": "2025-06-25T02:32:15.116829+00:00",
+        "task": {
+          "id": "blueprint-3-audit-lock",
+          "title": "Unify audit log locking via FileMutex",
+          "type": "blueprint",
+          "status": "open",
+          "created_at": "2025-06-24T00:00:00Z",
+          "description": "In src/cadence/audit/agent_event_log.py and audit/llm_call_log.py: \u2022 Delete the conditional `from filelock import FileLock` import. \u2022 Import FileMutex and use it in place of FileLock (same semantics: `with FileMutex(jsonl_path):`). \u2022 If FileMutex is stub (no lock), behaviour matches old optional dependency path."
+        },
+        "extra": {
+          "generated": [
+            "8684b2bf-0817-4d43-8599-25854c650bd1"
+          ]
+        }
+      }
+    ],
+    "iterations": []
+  },
+  {
+    "task_id": "blueprint-4-docs-update",
+    "created_at": "2025-06-25T02:32:18.286925+00:00",
+    "history": [
+      {
+        "state": "blueprint_converted",
+        "timestamp": "2025-06-25T02:32:18.286934+00:00",
+        "task": {
+          "id": "blueprint-4-docs-update",
+          "title": "Document mutex in DEV_PROCESS.md",
+          "type": "blueprint",
+          "status": "open",
+          "created_at": "2025-06-24T00:00:00Z",
+          "description": "Add bullet under **Persistence** subsection in docs/DEV_PROCESS.md: \u201cBacklog and TaskRecord writes are protected by FileMutex (fcntl/msvcrt) to prevent multi-process clobber.\u201d Ensure phase-table linter still passes."
+        },
+        "extra": {
+          "generated": [
+            "f7d9eecb-5753-4f24-953e-dea7e088160e"
+          ]
+        }
+      }
+    ],
+    "iterations": []
+  },
+  {
+    "task_id": "blueprint-5-mutex-test",
+    "created_at": "2025-06-25T02:32:25.147855+00:00",
+    "history": [
+      {
+        "state": "blueprint_converted",
+        "timestamp": "2025-06-25T02:32:25.147862+00:00",
+        "task": {
+          "id": "blueprint-5-mutex-test",
+          "title": "Add test_file_mutex.py",
+          "type": "blueprint",
+          "status": "open",
+          "created_at": "2025-06-24T00:00:00Z",
+          "description": "Create new test that: 1. Uses tempfile.TemporaryDirectory() as isolated repo. 2. Spawns two `python -c` subprocesses that each instantiate BacklogManager on the same JSON file and append a unique task (sleep 0.1 between writes). 3. Wait for both to finish; load JSON; assert len(list_items)==2 and file is valid. Skip on Windows if multiprocessing spawn causes flake (mark xfail)."
+        },
+        "extra": {
+          "generated": [
+            "87e3e7b5-32e3-445c-92f9-415c995bfc69"
+          ]
+        }
+      }
+    ],
+    "iterations": []
+  },
+  {
+    "task_id": "0a6b9569-bdb7-470e-a5d5-84a3d8e633ac",
+    "created_at": "2025-06-25T02:32:25.189249+00:00",
+    "history": [
+      {
+        "state": "build_patch",
+        "timestamp": "2025-06-25T02:32:25.189281+00:00",
+        "task": {
+          "id": "0a6b9569-bdb7-470e-a5d5-84a3d8e633ac",
+          "title": "Create cross-process FileMutex helper",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-25T02:32:08.873143+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/locking.py",
+                "after": "\"\"\"\nFileMutex: Cross-process exclusive file lock for POSIX and Windows.\n\n- POSIX: Uses fcntl.flock\n- Windows: Uses msvcrt.locking\n- Others: No-op with warning\n\nExample Usage:\n    from cadence.dev.locking import FileMutex\n    with FileMutex('/tmp/somefile') as lock:\n        if lock.acquired:\n            # Do work exclusively\n\"\"\"\nimport os\nimport sys\nimport warnings\n\nclass FileMutex:\n    \"\"\"\n    Cross-process file-based exclusive lock using system lock primitives.\n    Creates a lock file at <target_path>.lock (does not modify target_path).\n    Platform Support:\n      - POSIX: Uses fcntl.flock\n      - Windows: Uses msvcrt.locking\n      - Other: No-op stub; emits warning, never acquires lock\n\n    Attributes:\n        path (str): Path to lock file\n        acquired (bool): True if lock was acquired\n    \"\"\"\n    def __init__(self, target_path):\n        self.path = os.path.abspath(target_path) + '.lock'\n        self._fh = None\n        self.acquired = False\n        self._platform = sys.platform\n        self._is_posix = self._platform != 'win32'\n        self._is_windows = self._platform == 'win32'\n        self._stub = not (self._is_posix or self._is_windows)\n\n    def __enter__(self):\n        if self._is_posix:\n            import fcntl\n            self._fh = open(self.path, 'w')\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_EX)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        elif self._is_windows:\n            import msvcrt\n            self._fh = open(self.path, 'w')\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        else:\n            warnings.warn(\"FileMutex: Locking is not supported on this platform. Lock is not acquired.\")\n            self.acquired = False\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if self._is_posix and self._fh:\n            import fcntl\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_UN)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        elif self._is_windows and self._fh:\n            import msvcrt\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        else:\n            self.acquired = False\n        return False\n",
+                "before_sha": null,
+                "mode": "add"
+              }
+            ],
+            "message": "Implement cross-process FileMutex helper class for platform locking in src/cadence/dev/locking.py.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-1-filemutex"
+        },
+        "extra": {}
+      },
+      {
+        "state": "patch_built",
+        "timestamp": "2025-06-25T02:32:25.459929+00:00",
+        "task": {
+          "id": "0a6b9569-bdb7-470e-a5d5-84a3d8e633ac",
+          "title": "Create cross-process FileMutex helper",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-25T02:32:08.873143+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/locking.py",
+                "after": "\"\"\"\nFileMutex: Cross-process exclusive file lock for POSIX and Windows.\n\n- POSIX: Uses fcntl.flock\n- Windows: Uses msvcrt.locking\n- Others: No-op with warning\n\nExample Usage:\n    from cadence.dev.locking import FileMutex\n    with FileMutex('/tmp/somefile') as lock:\n        if lock.acquired:\n            # Do work exclusively\n\"\"\"\nimport os\nimport sys\nimport warnings\n\nclass FileMutex:\n    \"\"\"\n    Cross-process file-based exclusive lock using system lock primitives.\n    Creates a lock file at <target_path>.lock (does not modify target_path).\n    Platform Support:\n      - POSIX: Uses fcntl.flock\n      - Windows: Uses msvcrt.locking\n      - Other: No-op stub; emits warning, never acquires lock\n\n    Attributes:\n        path (str): Path to lock file\n        acquired (bool): True if lock was acquired\n    \"\"\"\n    def __init__(self, target_path):\n        self.path = os.path.abspath(target_path) + '.lock'\n        self._fh = None\n        self.acquired = False\n        self._platform = sys.platform\n        self._is_posix = self._platform != 'win32'\n        self._is_windows = self._platform == 'win32'\n        self._stub = not (self._is_posix or self._is_windows)\n\n    def __enter__(self):\n        if self._is_posix:\n            import fcntl\n            self._fh = open(self.path, 'w')\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_EX)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        elif self._is_windows:\n            import msvcrt\n            self._fh = open(self.path, 'w')\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        else:\n            warnings.warn(\"FileMutex: Locking is not supported on this platform. Lock is not acquired.\")\n            self.acquired = False\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if self._is_posix and self._fh:\n            import fcntl\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_UN)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        elif self._is_windows and self._fh:\n            import msvcrt\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        else:\n            self.acquired = False\n        return False\n",
+                "before_sha": null,
+                "mode": "add"
+              }
+            ],
+            "message": "Implement cross-process FileMutex helper class for platform locking in src/cadence/dev/locking.py.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-1-filemutex"
+        },
+        "extra": {
+          "patch": "diff --git a/var/folders/dc/0h9f2ldj29z_b8h9dbxrs2cw0000gn/T/tmpu3dydg5u/shadow/src/cadence/dev/locking.py b/src/cadence/dev/locking.py\nnew file mode 100644\nindex 0000000..e20e95a\n--- /dev/null\n+++ b/src/cadence/dev/locking.py\n@@ -0,0 +1,81 @@\n+\"\"\"\n+FileMutex: Cross-process exclusive file lock for POSIX and Windows.\n+\n+- POSIX: Uses fcntl.flock\n+- Windows: Uses msvcrt.locking\n+- Others: No-op with warning\n+\n+Example Usage:\n+    from cadence.dev.locking import FileMutex\n+    with FileMutex('/tmp/somefile') as lock:\n+        if lock.acquired:\n+            # Do work exclusively\n+\"\"\"\n+import os\n+import sys\n+import warnings\n+\n+class FileMutex:\n+    \"\"\"\n+    Cross-process file-based exclusive lock using system lock primitives.\n+    Creates a lock file at <target_path>.lock (does not modify target_path).\n+    Platform Support:\n+      - POSIX: Uses fcntl.flock\n+      - Windows: Uses msvcrt.locking\n+      - Other: No-op stub; emits warning, never acquires lock\n+\n+    Attributes:\n+        path (str): Path to lock file\n+        acquired (bool): True if lock was acquired\n+    \"\"\"\n+    def __init__(self, target_path):\n+        self.path = os.path.abspath(target_path) + '.lock'\n+        self._fh = None\n+        self.acquired = False\n+        self._platform = sys.platform\n+        self._is_posix = self._platform != 'win32'\n+        self._is_windows = self._platform == 'win32'\n+        self._stub = not (self._is_posix or self._is_windows)\n+\n+    def __enter__(self):\n+        if self._is_posix:\n+            import fcntl\n+            self._fh = open(self.path, 'w')\n+            try:\n+                fcntl.flock(self._fh, fcntl.LOCK_EX)\n+                self.acquired = True\n+            except Exception:\n+                self._fh.close()\n+                raise\n+        elif self._is_windows:\n+            import msvcrt\n+            self._fh = open(self.path, 'w')\n+            try:\n+                msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)\n+                self.acquired = True\n+            except Exception:\n+                self._fh.close()\n+                raise\n+        else:\n+            warnings.warn(\"FileMutex: Locking is not supported on this platform. Lock is not acquired.\")\n+            self.acquired = False\n+        return self\n+\n+    def __exit__(self, exc_type, exc_val, exc_tb):\n+        if self._is_posix and self._fh:\n+            import fcntl\n+            try:\n+                fcntl.flock(self._fh, fcntl.LOCK_UN)\n+            finally:\n+                self._fh.close()\n+                self.acquired = False\n+        elif self._is_windows and self._fh:\n+            import msvcrt\n+            try:\n+                msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)\n+            finally:\n+                self._fh.close()\n+                self.acquired = False\n+        else:\n+            self.acquired = False\n+        return False\n"
+        }
+      },
+      {
+        "state": "patch_reviewed",
+        "timestamp": "2025-06-25T02:32:25.466050+00:00",
+        "task": {
+          "id": "0a6b9569-bdb7-470e-a5d5-84a3d8e633ac",
+          "title": "Create cross-process FileMutex helper",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-25T02:32:08.873143+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/locking.py",
+                "after": "\"\"\"\nFileMutex: Cross-process exclusive file lock for POSIX and Windows.\n\n- POSIX: Uses fcntl.flock\n- Windows: Uses msvcrt.locking\n- Others: No-op with warning\n\nExample Usage:\n    from cadence.dev.locking import FileMutex\n    with FileMutex('/tmp/somefile') as lock:\n        if lock.acquired:\n            # Do work exclusively\n\"\"\"\nimport os\nimport sys\nimport warnings\n\nclass FileMutex:\n    \"\"\"\n    Cross-process file-based exclusive lock using system lock primitives.\n    Creates a lock file at <target_path>.lock (does not modify target_path).\n    Platform Support:\n      - POSIX: Uses fcntl.flock\n      - Windows: Uses msvcrt.locking\n      - Other: No-op stub; emits warning, never acquires lock\n\n    Attributes:\n        path (str): Path to lock file\n        acquired (bool): True if lock was acquired\n    \"\"\"\n    def __init__(self, target_path):\n        self.path = os.path.abspath(target_path) + '.lock'\n        self._fh = None\n        self.acquired = False\n        self._platform = sys.platform\n        self._is_posix = self._platform != 'win32'\n        self._is_windows = self._platform == 'win32'\n        self._stub = not (self._is_posix or self._is_windows)\n\n    def __enter__(self):\n        if self._is_posix:\n            import fcntl\n            self._fh = open(self.path, 'w')\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_EX)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        elif self._is_windows:\n            import msvcrt\n            self._fh = open(self.path, 'w')\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        else:\n            warnings.warn(\"FileMutex: Locking is not supported on this platform. Lock is not acquired.\")\n            self.acquired = False\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if self._is_posix and self._fh:\n            import fcntl\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_UN)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        elif self._is_windows and self._fh:\n            import msvcrt\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        else:\n            self.acquired = False\n        return False\n",
+                "before_sha": null,
+                "mode": "add"
+              }
+            ],
+            "message": "Implement cross-process FileMutex helper class for platform locking in src/cadence/dev/locking.py.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-1-filemutex"
+        },
+        "extra": {
+          "review": {
+            "pass": true,
+            "comments": ""
+          }
+        }
+      },
+      {
+        "state": "patch_reviewed_reasoning",
+        "timestamp": "2025-06-25T02:32:25.471397+00:00",
+        "task": {
+          "id": "0a6b9569-bdb7-470e-a5d5-84a3d8e633ac",
+          "title": "Create cross-process FileMutex helper",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-25T02:32:08.873143+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/locking.py",
+                "after": "\"\"\"\nFileMutex: Cross-process exclusive file lock for POSIX and Windows.\n\n- POSIX: Uses fcntl.flock\n- Windows: Uses msvcrt.locking\n- Others: No-op with warning\n\nExample Usage:\n    from cadence.dev.locking import FileMutex\n    with FileMutex('/tmp/somefile') as lock:\n        if lock.acquired:\n            # Do work exclusively\n\"\"\"\nimport os\nimport sys\nimport warnings\n\nclass FileMutex:\n    \"\"\"\n    Cross-process file-based exclusive lock using system lock primitives.\n    Creates a lock file at <target_path>.lock (does not modify target_path).\n    Platform Support:\n      - POSIX: Uses fcntl.flock\n      - Windows: Uses msvcrt.locking\n      - Other: No-op stub; emits warning, never acquires lock\n\n    Attributes:\n        path (str): Path to lock file\n        acquired (bool): True if lock was acquired\n    \"\"\"\n    def __init__(self, target_path):\n        self.path = os.path.abspath(target_path) + '.lock'\n        self._fh = None\n        self.acquired = False\n        self._platform = sys.platform\n        self._is_posix = self._platform != 'win32'\n        self._is_windows = self._platform == 'win32'\n        self._stub = not (self._is_posix or self._is_windows)\n\n    def __enter__(self):\n        if self._is_posix:\n            import fcntl\n            self._fh = open(self.path, 'w')\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_EX)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        elif self._is_windows:\n            import msvcrt\n            self._fh = open(self.path, 'w')\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        else:\n            warnings.warn(\"FileMutex: Locking is not supported on this platform. Lock is not acquired.\")\n            self.acquired = False\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if self._is_posix and self._fh:\n            import fcntl\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_UN)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        elif self._is_windows and self._fh:\n            import msvcrt\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        else:\n            self.acquired = False\n        return False\n",
+                "before_sha": null,
+                "mode": "add"
+              }
+            ],
+            "message": "Implement cross-process FileMutex helper class for platform locking in src/cadence/dev/locking.py.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-1-filemutex"
+        },
+        "extra": {
+          "review": {
+            "pass": true,
+            "comments": ""
+          }
+        }
+      },
+      {
+        "state": "patch_reviewed_efficiency",
+        "timestamp": "2025-06-25T02:32:28.775969+00:00",
+        "task": {
+          "id": "0a6b9569-bdb7-470e-a5d5-84a3d8e633ac",
+          "title": "Create cross-process FileMutex helper",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-25T02:32:08.873143+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/locking.py",
+                "after": "\"\"\"\nFileMutex: Cross-process exclusive file lock for POSIX and Windows.\n\n- POSIX: Uses fcntl.flock\n- Windows: Uses msvcrt.locking\n- Others: No-op with warning\n\nExample Usage:\n    from cadence.dev.locking import FileMutex\n    with FileMutex('/tmp/somefile') as lock:\n        if lock.acquired:\n            # Do work exclusively\n\"\"\"\nimport os\nimport sys\nimport warnings\n\nclass FileMutex:\n    \"\"\"\n    Cross-process file-based exclusive lock using system lock primitives.\n    Creates a lock file at <target_path>.lock (does not modify target_path).\n    Platform Support:\n      - POSIX: Uses fcntl.flock\n      - Windows: Uses msvcrt.locking\n      - Other: No-op stub; emits warning, never acquires lock\n\n    Attributes:\n        path (str): Path to lock file\n        acquired (bool): True if lock was acquired\n    \"\"\"\n    def __init__(self, target_path):\n        self.path = os.path.abspath(target_path) + '.lock'\n        self._fh = None\n        self.acquired = False\n        self._platform = sys.platform\n        self._is_posix = self._platform != 'win32'\n        self._is_windows = self._platform == 'win32'\n        self._stub = not (self._is_posix or self._is_windows)\n\n    def __enter__(self):\n        if self._is_posix:\n            import fcntl\n            self._fh = open(self.path, 'w')\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_EX)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        elif self._is_windows:\n            import msvcrt\n            self._fh = open(self.path, 'w')\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        else:\n            warnings.warn(\"FileMutex: Locking is not supported on this platform. Lock is not acquired.\")\n            self.acquired = False\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if self._is_posix and self._fh:\n            import fcntl\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_UN)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        elif self._is_windows and self._fh:\n            import msvcrt\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        else:\n            self.acquired = False\n        return False\n",
+                "before_sha": null,
+                "mode": "add"
+              }
+            ],
+            "message": "Implement cross-process FileMutex helper class for platform locking in src/cadence/dev/locking.py.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-1-filemutex"
+        },
+        "extra": {
+          "review": {
+            "pass": true,
+            "comments": "This implementation of the FileMutex class provides a cross-platform exclusive file lock with a minimal, easy-to-understand design. It correctly uses fcntl.flock for POSIX systems and msvcrt.locking for Windows, defaulting to a no-op with a warning for unsupported platforms. The lock file is handled cleanly, locking only the new '.lock' file and never the target resource directly, reducing risk of corruption. Boilerplate is minimal and platform detection is straightforward. This class enables safe cross-process file-based exclusion efficiently."
+          }
+        }
+      },
+      {
+        "state": "patch_applied",
+        "timestamp": "2025-06-25T02:32:28.818599+00:00",
+        "task": {
+          "id": "0a6b9569-bdb7-470e-a5d5-84a3d8e633ac",
+          "title": "Create cross-process FileMutex helper",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-25T02:32:08.873143+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/locking.py",
+                "after": "\"\"\"\nFileMutex: Cross-process exclusive file lock for POSIX and Windows.\n\n- POSIX: Uses fcntl.flock\n- Windows: Uses msvcrt.locking\n- Others: No-op with warning\n\nExample Usage:\n    from cadence.dev.locking import FileMutex\n    with FileMutex('/tmp/somefile') as lock:\n        if lock.acquired:\n            # Do work exclusively\n\"\"\"\nimport os\nimport sys\nimport warnings\n\nclass FileMutex:\n    \"\"\"\n    Cross-process file-based exclusive lock using system lock primitives.\n    Creates a lock file at <target_path>.lock (does not modify target_path).\n    Platform Support:\n      - POSIX: Uses fcntl.flock\n      - Windows: Uses msvcrt.locking\n      - Other: No-op stub; emits warning, never acquires lock\n\n    Attributes:\n        path (str): Path to lock file\n        acquired (bool): True if lock was acquired\n    \"\"\"\n    def __init__(self, target_path):\n        self.path = os.path.abspath(target_path) + '.lock'\n        self._fh = None\n        self.acquired = False\n        self._platform = sys.platform\n        self._is_posix = self._platform != 'win32'\n        self._is_windows = self._platform == 'win32'\n        self._stub = not (self._is_posix or self._is_windows)\n\n    def __enter__(self):\n        if self._is_posix:\n            import fcntl\n            self._fh = open(self.path, 'w')\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_EX)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        elif self._is_windows:\n            import msvcrt\n            self._fh = open(self.path, 'w')\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        else:\n            warnings.warn(\"FileMutex: Locking is not supported on this platform. Lock is not acquired.\")\n            self.acquired = False\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if self._is_posix and self._fh:\n            import fcntl\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_UN)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        elif self._is_windows and self._fh:\n            import msvcrt\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        else:\n            self.acquired = False\n        return False\n",
+                "before_sha": null,
+                "mode": "add"
+              }
+            ],
+            "message": "Implement cross-process FileMutex helper class for platform locking in src/cadence/dev/locking.py.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-1-filemutex"
+        },
+        "extra": {}
+      },
+      {
+        "state": "pytest_run",
+        "timestamp": "2025-06-25T02:32:32.429954+00:00",
+        "task": {
+          "id": "0a6b9569-bdb7-470e-a5d5-84a3d8e633ac",
+          "title": "Create cross-process FileMutex helper",
+          "type": "micro",
+          "status": "open",
+          "created_at": "2025-06-25T02:32:08.873143+00:00",
+          "change_set": {
+            "edits": [
+              {
+                "path": "src/cadence/dev/locking.py",
+                "after": "\"\"\"\nFileMutex: Cross-process exclusive file lock for POSIX and Windows.\n\n- POSIX: Uses fcntl.flock\n- Windows: Uses msvcrt.locking\n- Others: No-op with warning\n\nExample Usage:\n    from cadence.dev.locking import FileMutex\n    with FileMutex('/tmp/somefile') as lock:\n        if lock.acquired:\n            # Do work exclusively\n\"\"\"\nimport os\nimport sys\nimport warnings\n\nclass FileMutex:\n    \"\"\"\n    Cross-process file-based exclusive lock using system lock primitives.\n    Creates a lock file at <target_path>.lock (does not modify target_path).\n    Platform Support:\n      - POSIX: Uses fcntl.flock\n      - Windows: Uses msvcrt.locking\n      - Other: No-op stub; emits warning, never acquires lock\n\n    Attributes:\n        path (str): Path to lock file\n        acquired (bool): True if lock was acquired\n    \"\"\"\n    def __init__(self, target_path):\n        self.path = os.path.abspath(target_path) + '.lock'\n        self._fh = None\n        self.acquired = False\n        self._platform = sys.platform\n        self._is_posix = self._platform != 'win32'\n        self._is_windows = self._platform == 'win32'\n        self._stub = not (self._is_posix or self._is_windows)\n\n    def __enter__(self):\n        if self._is_posix:\n            import fcntl\n            self._fh = open(self.path, 'w')\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_EX)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        elif self._is_windows:\n            import msvcrt\n            self._fh = open(self.path, 'w')\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)\n                self.acquired = True\n            except Exception:\n                self._fh.close()\n                raise\n        else:\n            warnings.warn(\"FileMutex: Locking is not supported on this platform. Lock is not acquired.\")\n            self.acquired = False\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if self._is_posix and self._fh:\n            import fcntl\n            try:\n                fcntl.flock(self._fh, fcntl.LOCK_UN)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        elif self._is_windows and self._fh:\n            import msvcrt\n            try:\n                msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)\n            finally:\n                self._fh.close()\n                self.acquired = False\n        else:\n            self.acquired = False\n        return False\n",
+                "before_sha": null,
+                "mode": "add"
+              }
+            ],
+            "message": "Implement cross-process FileMutex helper class for platform locking in src/cadence/dev/locking.py.",
+            "author": "",
+            "meta": {}
+          },
+          "parent_id": "blueprint-1-filemutex"
+        },
+        "extra": {
+          "pytest": {
+            "success": true,
+            "output": "..................                                                       [100%]\n18 passed in 3.39s"
+          }
+        }
+      }
+    ],
+    "iterations": []
   }
 ]
