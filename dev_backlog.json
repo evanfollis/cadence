@@ -1,10 +1,107 @@
 [
   {
-    "id": "TEST",
-    "title": "test",
-    "type": "story",
-    "status": "open",
+    "id": "blueprint-01-move-ui",
+    "title": "Move Streamlit Dev Center to legacy area",
+    "type": "blueprint",
+    "status": "archived",
     "created_at": "2025-06-24T00:00:00Z",
-    "description": "This is a test. As the test, you should generate a file at temp/review.txt that is an analysis of the project. Confrim that you are able to see the codebase and docs in our message history (system prompt) and provide a high-level assessment of the project."
+    "description": "Move *src/cadence/dev/command_center.py* and its associated Streamlit code to *legacy/command_center.py* to freeze the prototype UI. Ensure nothing under `cadence.*` imports it. Add a comment header marking it deprecated. Update `src/cadence/dev/__init__.py` so the file is no longer exposed as part of the public API."
   },
+  {
+    "id": "blueprint-02-purge-streamlit",
+    "title": "Purge Streamlit dependency",
+    "type": "blueprint",
+    "status": "archived",
+    "created_at": "2025-06-24T00:00:00Z",
+    "description": "Search the entire codebase for `import streamlit` and delete or comment-gate any occurrences (there should be none after Blueprint 01). If *pyproject.toml* or *requirements.txt* lists `streamlit`, remove it. Ensure `pytest -q` still passes."
+  },
+  {
+    "id": "blueprint-03-update-docs",
+    "title": "Annotate frozen UI in DEV_PROCESS.md",
+    "type": "blueprint",
+    "status": "archived",
+    "created_at": "2025-06-24T00:00:00Z",
+    "description": "Add a short bullet under **Future Work \u2192 Interface Layer** in *docs/DEV_PROCESS.md*: \u201cStreamlit prototype has been archived under *legacy/*. A new React GUI will supersede it.\u201d Make sure the phase-table guard in *tools/lint_docs.py* still passes."
+  },
+  {
+    "id": "15d4bb35-46e7-4907-9ddd-065dc4598a3a",
+    "title": "Move Streamlit Dev Center to legacy area",
+    "type": "micro",
+    "status": "open",
+    "created_at": "2025-06-25T02:21:18.724042+00:00",
+    "change_set": {
+      "edits": [
+        {
+          "path": "src/cadence/dev/command_center.py",
+          "after": null,
+          "before_sha": null,
+          "mode": "delete"
+        },
+        {
+          "path": "legacy/command_center.py",
+          "after": "# DEPRECATED: This Streamlit-based prototype UI has been moved to the legacy area and is no longer maintained or exposed via the main API.\n# Do not import from cadence.* modules.\n\n# (Original contents of src/cadence/dev/command_center.py should be copied here.)\n",
+          "before_sha": null,
+          "mode": "add"
+        },
+        {
+          "path": "src/cadence/dev/__init__.py",
+          "after": "# (Existing imports)\n# Removed import of command_center to avoid exposing legacy UI\n# from .command_center import ...\n\n# (Rest of the file remains unchanged)\n",
+          "before_sha": null,
+          "mode": "modify"
+        }
+      ],
+      "message": "Move Streamlit Dev Center prototype to legacy and deprecate it. Prevent exposure via cadence.dev API and remove imports from cadence.*.",
+      "author": "",
+      "meta": {}
+    },
+    "parent_id": "blueprint-01-move-ui"
+  },
+  {
+    "id": "8c1a5a84-e417-49f4-9bcd-fcb52da5af3f",
+    "title": "Purge Streamlit dependency",
+    "type": "micro",
+    "status": "open",
+    "created_at": "2025-06-25T02:21:21.996454+00:00",
+    "change_set": {
+      "edits": [
+        {
+          "path": "pyproject.toml",
+          "after": null,
+          "before_sha": null,
+          "mode": "modify"
+        },
+        {
+          "path": "requirements.txt",
+          "after": null,
+          "before_sha": null,
+          "mode": "modify"
+        }
+      ],
+      "message": "Remove all references to 'streamlit' from codebase and dependencies. Delete any remaining 'import streamlit' statements or comment them out. Remove 'streamlit' from pyproject.toml and requirements.txt if present, as per purge after Blueprint 01.",
+      "author": "",
+      "meta": {}
+    },
+    "parent_id": "blueprint-02-purge-streamlit"
+  },
+  {
+    "id": "e470f355-55cb-46d6-a136-50637d2404ce",
+    "title": "Annotate frozen UI in DEV_PROCESS.md",
+    "type": "micro",
+    "status": "open",
+    "created_at": "2025-06-25T02:21:23.635711+00:00",
+    "change_set": {
+      "edits": [
+        {
+          "path": "docs/DEV_PROCESS.md",
+          "after": "* Streamlit prototype has been archived under *legacy/*. A new React GUI will supersede it.\n",
+          "before_sha": null,
+          "mode": "modify"
+        }
+      ],
+      "message": "Annotate archived Streamlit UI and React GUI plan under 'Future Work \u2192 Interface Layer' in DEV_PROCESS.md.",
+      "author": "",
+      "meta": {}
+    },
+    "parent_id": "blueprint-03-update-docs"
+  }
 ]
