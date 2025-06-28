@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .profile import AgentProfile, REASONING_PROFILE
 from .reasoning import ReasoningAgent
+from .base import BaseAgent
 
 
 _SIDEKICK_PROMPT = """
@@ -53,6 +54,7 @@ class Sidekick:
     # Private helpers
     # ------------------------------------------------------------------ #
     def _inject_seed_context(self):
-        super().reset_context(system_prompt)
-        snapshot = self.gather_codebase_context()
-        self.append_message("user", f"REFERENCE_DOCUMENTS:\\n{snapshot}\\n---\\nYou are cleared for deep reasoning.")
+        """Reset the delegate agent and seed it with repo context."""
+        BaseAgent.reset_context(self._agent)
+        snapshot = self._agent.gather_codebase_context()
+        self._agent.append_message("user", f"REFERENCE_DOCUMENTS:\\n{snapshot}\\n---\\nYou are cleared for deep reasoning.")
