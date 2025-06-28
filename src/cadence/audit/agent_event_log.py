@@ -12,7 +12,8 @@ except ImportError:                          # pragma: no cover
     FileLock = None                          # type: ignore
 
 # configurable via env-vars, but sane defaults for CI & dev shells
-LOG_ROOT   = Path(os.getenv("CADENCE_AGENT_LOG_DIR", ".cadence_logs"))
+# Resolve to an absolute path so later ``chdir`` calls do not break logging
+LOG_ROOT   = Path(os.getenv("CADENCE_AGENT_LOG_DIR", ".cadence_logs")).resolve()
 MAX_BYTES  = int(os.getenv("CADENCE_AGENT_LOG_ROLL_MB", "50")) * 1024 * 1024
 LOG_ROOT.mkdir(parents=True, exist_ok=True)
 

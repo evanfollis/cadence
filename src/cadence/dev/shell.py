@@ -62,6 +62,29 @@ class ShellRunner:
         # Phase-tracking:  task_id → {phase labels}
         self._phase_flags: Dict[str, Set[str]] = {}
 
+    # ------------------------------------------------------------------ #
+    def _run(self, cmd: List[str]) -> subprocess.CompletedProcess:
+        """Internal helper used by git helpers."""
+        return subprocess.run(
+            cmd,
+            cwd=self.repo_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+
+    # ------------------------------------------------------------------ #
+    def run(self, cmd: List[str], *, check: bool = True) -> str:
+        """Execute *cmd* in ``repo_dir`` and return its stdout."""
+        result = self._run(cmd)
+        output = (result.stdout or "") + (result.stderr or "")
+        if check and result.returncode != 0:
+            err = ShellCommandError(output.strip())
+            self._record_failure(state="failed_run", error=err, output=output, cmd=cmd)
+            raise err
+        return output
+
     # ---- phase-tracking helpers ---------------------------------------
     def _init_phase_tracking(self, task_id: str) -> None:
         self._phase_flags.setdefault(task_id, set())
@@ -123,11 +146,18 @@ class ShellRunner:
         )
         if res.returncode != 0:
             raise ShellCommandError(res.stderr.strip())
-        cmd = (
-            ["git", "checkout", branch]
-            if res.stdout.strip()
-            else ["git", "checkout", "-b", branch, base_branch]
-        )
+        if res.stdout.strip():
+            cmd = ["git", "checkout", branch]
+        else:
+            # Only use base_branch if it exists; otherwise rely on HEAD
+            base_exists = subprocess.run(
+                ["git", "rev-parse", "--verify", base_branch],
+                cwd=self.repo_dir,
+                capture_output=True,
+                text=True,
+                check=False,
+            ).returncode == 0
+            cmd = ["git", "checkout", "-b", branch] + ([base_branch] if base_exists else [])
         res = subprocess.run(
             cmd, cwd=self.repo_dir, capture_output=True, text=True, check=False
         )

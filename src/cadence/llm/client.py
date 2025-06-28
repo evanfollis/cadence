@@ -4,10 +4,23 @@ from __future__ import annotations
 import os, logging, time
 from typing import List, Dict, Any, Optional, cast
 
-from openai import AsyncOpenAI, OpenAI
-from openai.types.chat import ChatCompletionMessageParam
-from dotenv import load_dotenv
-import tiktoken
+try:  # optional dependency – tests run in offline mode
+    from openai import AsyncOpenAI, OpenAI
+    from openai.types.chat import ChatCompletionMessageParam
+except Exception:  # pragma: no cover - fallback when openai missing
+    AsyncOpenAI = OpenAI = None  # type: ignore[assignment]
+    ChatCompletionMessageParam = Any  # type: ignore
+
+try:
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover - dotenv optional for tests
+    def load_dotenv():
+        return None
+
+try:
+    import tiktoken
+except Exception:  # pragma: no cover - fallback tokenizer
+    tiktoken = None  # type: ignore
 import hashlib
 from cadence.audit.llm_call_log import LLMCallLogger
 
@@ -29,6 +42,10 @@ _DEFAULT_MODELS = {
 
 
 def _count_tokens(model: str, messages: List[Dict[str, str]]) -> int:
+    """Return a rough token count, falling back when ``tiktoken`` is missing."""
+    if tiktoken is None:  # pragma: no cover - offline fallback
+        return sum(len(m["role"]) + len(m["content"]) for m in messages)
+
     enc = tiktoken.get_encoding("o200k_base")
     return sum(len(enc.encode(m["role"])) + len(enc.encode(m["content"])) for m in messages)
 
@@ -59,7 +76,7 @@ class LLMClient:
         self.api_version = api_version or os.getenv("OPENAI_API_VERSION")
         self.default_model = default_model or _DEFAULT_MODELS["execution"]
 
-        if self.stub:
+        if self.stub or OpenAI is None:
             if not LLMClient._warned_stub:
                 logger.warning(
                     "[Cadence] LLMClient stub-mode — OPENAI_API_KEY missing; "

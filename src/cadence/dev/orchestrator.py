@@ -19,6 +19,7 @@ Key capabilities
 
 from __future__ import annotations
 
+import os
 import sys
 from typing import Any, Dict, Optional
 from datetime import datetime, UTC
@@ -62,7 +63,15 @@ class MetaAgent:
 # Orchestrator
 # --------------------------------------------------------------------------- #
 class DevOrchestrator:
-    def __init__(self, config: dict):
+    def __init__(self, config: dict | None = None):
+        if config is None:
+            import json
+            cfg_path = Path(__file__).resolve().parents[3] / "dev_config.json"
+            config = json.loads(cfg_path.read_text())
+            root = cfg_path.parent
+            for key in ("backlog_path", "src_root", "repo_dir", "record_file", "template_file", "ruleset_file"):
+                if key in config and config[key] is not None and not os.path.isabs(str(config[key])):
+                    config[key] = str((root / config[key]).resolve())
         # Core collaborators -------------------------------------------------
         self.backlog = BacklogManager(config["backlog_path"])
         self.generator = TaskGenerator(config.get("template_file"))
@@ -289,17 +298,11 @@ class DevOrchestrator:
             except TaskExecutorError as ex:
                 msg = str(ex).lower()
 
-                # graceful-exit: empty diff  → mark done
+                # empty diff → treat as failure to ensure audit trail matches expectations
                 if "empty diff" in msg:
-                    self.backlog.update_item(task["id"], {"status": "done"})
-                    self.backlog.archive_completed()
-                    self._record(task, "no_op_change", {"detail": str(ex)})
-                    print("[ℹ] No changes needed – task auto-closed.")
-                    return {
-                        "success": True,
-                        "stage": "no_op_change",
-                        "task_id": task["id"],
-                    }
+                    self._record(task, "failed_build_patch", {"error": str(ex)})
+                    print("[X] Patch build failed:", ex)
+                    return {"success": False, "stage": "build_patch", "error": str(ex)}
 
                 # change-set malformed  → block + fail
                 if "after" in msg and "mode=modify" in msg:
@@ -495,10 +498,10 @@ class DevOrchestrator:
     # ------------------------------------------------------------------ #
     def _attempt_rollback(
         self,
-        task: dict,
-        patch: str | None,
+        task: dict | None = None,
+        patch: str | None = None,
         *,
-        src_stage: str,
+        src_stage: str = "manual",
         quiet: bool = False,
     ) -> None:
         """
@@ -506,27 +509,31 @@ class DevOrchestrator:
         *src_stage*.  All outcomes are persisted to TaskRecord so the
         integration test can assert `"rollback_succeeded"` is present.
         """
-        self._record(task, "rollback_started", {"from_stage": src_stage})
+        if task:
+            self._record(task, "rollback_started", {"from_stage": src_stage})
 
         try:
             # Unstage & discard everything – no commit exists yet
             self.shell.git_reset_hard("HEAD")
-            self._record(task, "rollback_succeeded")
+            if task:
+                self._record(task, "rollback_succeeded")
             if not quiet:
                 print("[↩] Rollback successful – working tree restored.")
 
         except ShellCommandError as ex:
-            self._record(task, "rollback_failed", {"error": str(ex)})
+            if task:
+                self._record(task, "rollback_failed", {"error": str(ex)})
             if not quiet:
                 print(f"[X] Rollback FAILED: {ex}")
             if not quiet:
                 raise
 
         # 🌱 auto-generate follow-up remediation tasks
-        try:
-            self.failure_responder.handle_failure(task, src_stage)
-        except Exception as fr_exc:               # never abort the cycle
-            print(f"[FailureResponder-Error] {fr_exc}", file=sys.stderr)
+        if task:
+            try:
+                self.failure_responder.handle_failure(task, src_stage)
+            except Exception as fr_exc:  # pragma: no cover - best effort
+                print(f"[FailureResponder-Error] {fr_exc}", file=sys.stderr)
 
 
     # ------------------------------------------------------------------ #
