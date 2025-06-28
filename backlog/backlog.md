@@ -146,7 +146,7 @@ tests/test_file_mutex.py            (new)
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **title**       | “Guard backlog & record JSON writes with FileMutex”                                                                                                                                                                                                                      |
 | **type**        | blueprint                                                                                                                                                                                                                                                                |
-| **description** | <br>Edit `backlog.py` and `record.py`:<br>• Wrap *all* disk I/O (`save`, `load`, `_persist`) in `with FileMutex(self.path): …` **in addition** to existing `RLock`.<br>• Remove any redundant tmp-file rename race comments.<br>Preserve existing atomic-swap semantics. |
+| **description** | <br>Edit `src/cadence/dev/backlog.py` and `src/cadence/dev/record.py`:<br>• Wrap *all* disk I/O (`save`, `load`, `_persist`) in `with FileMutex(self.path): …` **in addition** to existing `RLock`.<br>• Remove any redundant tmp-file rename race comments.<br>Preserve existing atomic-swap semantics. |
 
 ---
 

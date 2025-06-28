@@ -19,10 +19,10 @@ It captures *every* loop I proposed, the order of operations, and the artifacts 
 | Loop  | Headline Deliverable                                                            | Key Modules Touched                                        | New Tests                        |
 | ----- | ------------------------------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------- |
 | **0** | *Prep sweep* – delete Streamlit imports, archive legacy UI                      | `command_center.py` only (move to `legacy/`)               | n/a                              |
-| **1** | `FileMutex` cross-process lock + integration                                    | `dev/locking.py`, `backlog.py`, `record.py`, `audit/*`     | `test_file_mutex.py`             |
+| **1** | `FileMutex` cross-process lock + integration                                    | `dev/locking.py`, `src/cadence/dev/backlog.py`, `src/cadence/dev/record.py`, `audit/*`     | `test_file_mutex.py`             |
 | **2** | *Atomic rollback inside ShellRunner* + `dirty_repo` sentinel                    | `shell.py`, `orchestrator.py`                              | `test_failed_rollback.py` update |
 | **3** | `PhaseTrackerMixin`; decorator on **all** ShellRunner mutators                  | `phase_guard.py`, `shell.py`                               | `test_phase_ordering.py`         |
-| **4** | Deprecate `task["diff"]` & `task["patch"]` ; inject `before_sha` at backlog-add | `executor.py`, `backlog.py`, delete fallback code in tests | `test_before_sha_validation.py`  |
+| **4** | Deprecate `task["diff"]` & `task["patch"]` ; inject `before_sha` at backlog-add | `executor.py`, `src/cadence/dev/backlog.py`, delete fallback code in tests | `test_before_sha_validation.py`  |
 | **5** | Efficiency review strict-fail on JSON parse/validation error                    | `orchestrator.py` review-2 block                           | `test_efficiency_review_gate.py` |
 
 *(Loops 6+ reserved for patch-builder optimisation, snapshot caching, lint tooling.)*
@@ -46,7 +46,7 @@ It captures *every* loop I proposed, the order of operations, and the artifacts 
 | File                                                | Addition                                               |
 | --------------------------------------------------- | ------------------------------------------------------ |
 | `src/cadence/dev/locking.py`                        | `FileMutex` context-manager; `with FileMutex(path): …` |
-| `backlog.py`, `record.py`                           | Wrap `save/load/_persist` with mutex                   |
+| `src/cadence/dev/backlog.py`, `src/cadence/dev/record.py`                           | Wrap `save/load/_persist` with mutex                   |
 | `audit/agent_event_log.py`, `audit/llm_call_log.py` | Replace optional *filelock* import with `FileMutex`    |
 
 **Docs**
@@ -113,7 +113,7 @@ Update existing `tests/test_failed_rollback.py`:
 | --------------- | ----------------------------------------------------------------------------------- |
 | `executor.py`   | Delete legacy `_build_one_file_diff`; raise if `'change_set'` missing               |
 | `dev/schema.py` | Remove `CHANGE_SET_V1` legacy alias fields (`changes`)                              |
-| `backlog.py`    | On `add_item`, for every `change_set` edit compute current SHA and set `before_sha` |
+| `src/cadence/dev/backlog.py`    | On `add_item`, for every `change_set` edit compute current SHA and set `before_sha` |
 | Tests           | Remove fixtures that feed `diff`/`patch` tasks                                      |
 
 **Docs**
