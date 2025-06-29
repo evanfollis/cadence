@@ -22,3 +22,7 @@
 ## Guard Rails
 * Commit blocked unless phases 01-07 succeed **and** flags `review_passed`, `efficiency_passed`, `branch_isolated`, `tests_passed` are present.
 * Merge blocked unless branch fast-forwards and post-merge tests pass.
+
+### UI note
+The prototype Streamlit dashboard has been moved to `legacy/`.
+A React-based front‑end will be developed in a future loop.

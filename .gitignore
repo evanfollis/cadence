@@ -3,7 +3,7 @@
 archive
 code_payloads
 temp
-*__pycache__*
+**/__pycache__/
 *.py[co]
 *.pyd
 *.so
