@@ -1,3 +1,6 @@
+# Status: Archived. 
+## Early prototype of my AI-native orchestration ideas. Superseded by synaplex and ai-native.”
+
 # Cadence Development Loops
 
 This repository contains Cadence, a prototype agent framework. Development is organised into numbered loops defined in `docs/next_steps.md`. Each loop represents a small, verifiable change set.
